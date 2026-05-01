@@ -1,0 +1,29 @@
+@import url('https://fonts.googleapis.com/css2?family=Heebo:wght@300;400;500;600;700&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+html, body, #root { height: 100%; }
+body {
+  direction: rtl;
+  background: rgb(10 10 12);
+  color: rgb(235 235 240);
+  font-family: 'Heebo', system-ui, sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
+
+@layer components {
+  .card { @apply bg-surface border border-border rounded-xl; }
+  .btn { @apply inline-flex items-center justify-center gap-2 rounded-lg px-3 py-2 text-sm font-medium transition-colors; }
+  .btn-primary { @apply btn bg-accent hover:bg-indigo-500 text-white; }
+  .btn-ghost { @apply btn hover:bg-surface text-muted hover:text-text; }
+  .input { @apply w-full bg-bg border border-border rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-accent; }
+  .badge { @apply inline-flex items-center px-2 py-0.5 rounded-md text-xs font-medium; }
+  .chip { @apply px-2 py-1 rounded-md text-xs font-medium; }
+}
+
+::-webkit-scrollbar { width: 10px; height: 10px; }
+::-webkit-scrollbar-track { background: rgb(10 10 12); }
+::-webkit-scrollbar-thumb { background: rgb(38 38 44); border-radius: 4px; }
+::-webkit-scrollbar-thumb:hover { background: rgb(60 60 68); }
