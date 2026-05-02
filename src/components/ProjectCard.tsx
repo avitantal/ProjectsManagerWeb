@@ -159,7 +159,7 @@ export function ProjectCard({ project, scope, progress, onChange }: Props) {
         {showFiles ? <ChevronUp size={12} /> : <ChevronDown size={12} />}
       </button>
       {showFiles && (
-        <ProjectFiles scope={scope} projectId={project.id} onTasksChange={onChange} />
+        <ProjectFiles scope={scope} projectId={project.id} />
       )}
     </div>
   );
