@@ -1,73 +1,67 @@
-# React + TypeScript + Vite
+# 🎯 ניהול פרויקטים — ProjectsManagerWeb
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+אפליקציית ווב לניהול פרויקטים ומשימות עם הפרדה בין הקשר **מפעל** להקשר **אישי**, מבוססת React + TypeScript + Vite, עם Supabase כ-Backend ואימות משתמשים.
 
-Currently, two official plugins are available:
+## ✨ תכונות עיקריות
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+- 🔐 **אימות משתמשים** דרך Supabase Auth
+- 🏭 **שני הקשרים (Scopes)**: מפעל / אישי — כל אחד עם הפרויקטים והמשימות שלו
+- 📊 **סטטיסטיקות** של פרויקטים ומשימות בזמן אמת
+- ✅ **ניהול משימות** עם סטטוס, סינון לפי פרויקט והתקדמות
+- 🎨 **ממשק RTL** בעברית, מבוסס Tailwind CSS
+- 🚀 **פריסה ל-GitHub Pages** מובנית
 
-## React Compiler
+## 🛠️ Tech Stack
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+- **Frontend**: React 19, TypeScript, Vite 8
+- **Styling**: Tailwind CSS 3, lucide-react icons
+- **Backend**: Supabase (Auth + Database)
+- **Utils**: date-fns, clsx, tailwind-merge
 
-## Expanding the ESLint configuration
+## 📦 התקנה
 
-If you are developing a production application, we recommend updating the configuration to enable type-aware lint rules:
-
-```js
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-
-      // Remove tseslint.configs.recommended and replace with this
-      tseslint.configs.recommendedTypeChecked,
-      // Alternatively, use this for stricter rules
-      tseslint.configs.strictTypeChecked,
-      // Optionally, add this for stylistic rules
-      tseslint.configs.stylisticTypeChecked,
-
-      // Other configs...
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+```bash
+npm install
 ```
 
-You can also install [eslint-plugin-react-x](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-x) and [eslint-plugin-react-dom](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-dom) for React-specific lint rules:
+צור קובץ `.env` בשורש הפרויקט עם משתני Supabase:
 
-```js
-// eslint.config.js
-import reactX from 'eslint-plugin-react-x'
-import reactDom from 'eslint-plugin-react-dom'
-
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-      // Enable lint rules for React
-      reactX.configs['recommended-typescript'],
-      // Enable lint rules for React DOM
-      reactDom.configs.recommended,
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+```env
+VITE_SUPABASE_URL=your-supabase-url
+VITE_SUPABASE_ANON_KEY=your-anon-key
 ```
+
+## 🚀 שימוש
+
+```bash
+# פיתוח
+npm run dev
+
+# Build לפרודקשן
+npm run build
+
+# תצוגה מקדימה של ה-build
+npm run preview
+
+# Lint
+npm run lint
+```
+
+## 📁 מבנה הפרויקט
+
+```
+src/
+├── components/      # רכיבי UI (Auth, ProjectCard, TaskRow, Stats, AddDialog...)
+├── hooks/           # useAuth, useData (useProjects, useTasks)
+├── lib/             # supabase client, utils
+├── App.tsx          # רכיב ראשי + ניווט בין scopes
+└── main.tsx         # נקודת כניסה
+```
+
+## 🌐 פריסה
+
+ה-`vite.config.ts` מוגדר אוטומטית עם `base: '/ProjectsManagerWeb/'` כש-`GITHUB_ACTIONS` מוגדר, מתאים לפריסה ל-GitHub Pages.
+
+## 📝 License
+
+Private project.

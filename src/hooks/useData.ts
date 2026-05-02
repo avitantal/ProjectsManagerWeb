@@ -16,7 +16,10 @@ export function useProjects(scope: Scope) {
     setLoading(false);
   }, [scope]);
 
-  useEffect(() => { refresh(); }, [refresh]);
+  useEffect(() => {
+    const timeout = window.setTimeout(() => { void refresh(); }, 0);
+    return () => window.clearTimeout(timeout);
+  }, [refresh]);
 
   return { projects, loading, refresh };
 }
@@ -36,7 +39,10 @@ export function useTasks(scope: Scope) {
     setLoading(false);
   }, [scope]);
 
-  useEffect(() => { refresh(); }, [refresh]);
+  useEffect(() => {
+    const timeout = window.setTimeout(() => { void refresh(); }, 0);
+    return () => window.clearTimeout(timeout);
+  }, [refresh]);
 
   return { tasks, loading, refresh };
 }

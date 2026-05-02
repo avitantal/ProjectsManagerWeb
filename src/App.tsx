@@ -18,9 +18,15 @@ function ScopeView({ scope }: { scope: Scope }) {
 
   function refreshAll() { refreshProjects(); refreshTasks(); }
 
-  const taskCounts = useMemo(() => {
-    const m = new Map<number, number>();
-    tasks.forEach(t => { if (t.project_id) m.set(t.project_id, (m.get(t.project_id) ?? 0) + 1); });
+  const projectProgress = useMemo(() => {
+    const m = new Map<number, { completed: number; total: number }>();
+    tasks.forEach(t => {
+      if (!t.project_id) return;
+      const current = m.get(t.project_id) ?? { completed: 0, total: 0 };
+      current.total += 1;
+      if (t.status === 'done') current.completed += 1;
+      m.set(t.project_id, current);
+    });
     return m;
   }, [tasks]);
 
@@ -50,7 +56,7 @@ function ScopeView({ scope }: { scope: Scope }) {
             {projects.map(p => (
               <div key={p.id} onClick={() => setFilterProjectId(filterProjectId === p.id ? null : p.id)}
                    className={cn('cursor-pointer', filterProjectId === p.id && 'ring-1 ring-accent rounded-xl')}>
-                <ProjectCard project={p} scope={scope} taskCount={taskCounts.get(p.id) ?? 0} onChange={refreshAll} />
+                <ProjectCard project={p} scope={scope} progress={projectProgress.get(p.id) ?? { completed: 0, total: 0 }} onChange={refreshAll} />
               </div>
             ))}
           </div>
