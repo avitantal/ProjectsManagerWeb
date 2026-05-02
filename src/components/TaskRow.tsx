@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Check, Sparkles, Trash2 } from 'lucide-react';
+import { Check, Pencil, Sparkles, Trash2 } from 'lucide-react';
 import {
   type Task,
   type TaskStatus,
@@ -14,6 +14,7 @@ import {
 } from '../lib/supabase';
 import { formatDate, daysUntil } from '../lib/utils';
 import { InlineChangeActions } from './InlineChangeActions';
+import { AddDialog } from './AddDialog';
 
 interface TaskDraft {
   taskId: number;
@@ -26,11 +27,13 @@ interface TaskDraft {
 interface Props {
   task: Task;
   project?: Project;
+  projects: Project[];
   scope: Scope;
   onChange: () => void;
 }
 
-export function TaskRow({ task, project, scope, onChange }: Props) {
+export function TaskRow({ task, project, projects, scope, onChange }: Props) {
+  const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState<TaskDraft>(() => ({
     taskId: task.id,
     savedStatus: task.status,
@@ -168,16 +171,37 @@ export function TaskRow({ task, project, scope, onChange }: Props) {
             </button>
           </div>
         ) : (
-          <button
-            type="button"
-            onClick={() => setConfirmingDeleteId(task.id)}
-            className="opacity-0 group-hover:opacity-100 text-muted hover:text-red-400 transition"
-            aria-label="מחק"
-          >
-            <Trash2 size={14} />
-          </button>
+          <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition">
+            <button
+              type="button"
+              onClick={() => setEditing(true)}
+              className="text-muted hover:text-accent"
+              aria-label="ערוך"
+            >
+              <Pencil size={14} />
+            </button>
+            <button
+              type="button"
+              onClick={() => setConfirmingDeleteId(task.id)}
+              className="text-muted hover:text-red-400"
+              aria-label="מחק"
+            >
+              <Trash2 size={14} />
+            </button>
+          </div>
         )}
       </div>
+
+      {editing && (
+        <AddDialog
+          scope={scope}
+          type="task"
+          projects={projects}
+          editing={task}
+          onClose={() => setEditing(false)}
+          onSaved={onChange}
+        />
+      )}
     </div>
   );
 }

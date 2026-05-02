@@ -1,6 +1,6 @@
 import { useState, useMemo } from 'react';
 import { Plus, RefreshCw, Factory, House, LogOut, Loader2 } from 'lucide-react';
-import { useProjects, useTasks } from './hooks/useData';
+import { useProjects, useTasks, useFileCounts } from './hooks/useData';
 import { useAuth } from './hooks/useAuth';
 import { supabase, type Scope } from './lib/supabase';
 import { Stats } from './components/Stats';
@@ -13,10 +13,11 @@ import { cn } from './lib/utils';
 function ScopeView({ scope }: { scope: Scope }) {
   const { projects, refresh: refreshProjects } = useProjects(scope);
   const { tasks, refresh: refreshTasks } = useTasks(scope);
+  const { counts: fileCounts, refresh: refreshFileCounts } = useFileCounts(scope);
   const [filterProjectId, setFilterProjectId] = useState<number | null>(null);
   const [showAdd, setShowAdd] = useState<null | 'project' | 'task'>(null);
 
-  function refreshAll() { refreshProjects(); refreshTasks(); }
+  function refreshAll() { refreshProjects(); refreshTasks(); refreshFileCounts(); }
 
   const projectProgress = useMemo(() => {
     const m = new Map<number, { completed: number; total: number }>();
@@ -56,7 +57,7 @@ function ScopeView({ scope }: { scope: Scope }) {
             {projects.map(p => (
               <div key={p.id} onClick={() => setFilterProjectId(filterProjectId === p.id ? null : p.id)}
                    className={cn('cursor-pointer', filterProjectId === p.id && 'ring-1 ring-accent rounded-xl')}>
-                <ProjectCard project={p} scope={scope} progress={projectProgress.get(p.id) ?? { completed: 0, total: 0 }} onChange={refreshAll} />
+                <ProjectCard project={p} scope={scope} progress={projectProgress.get(p.id) ?? { completed: 0, total: 0 }} fileCount={fileCounts.get(p.id) ?? 0} onChange={refreshAll} />
               </div>
             ))}
           </div>
@@ -82,7 +83,7 @@ function ScopeView({ scope }: { scope: Scope }) {
               <div className="card p-6 text-center text-muted text-sm">אין משימות</div>
             )}
             {filteredTasks.map(t => (
-              <TaskRow key={t.id} task={t} project={t.project_id ? projectsById.get(t.project_id) : undefined} scope={scope} onChange={refreshAll} />
+              <TaskRow key={t.id} task={t} project={t.project_id ? projectsById.get(t.project_id) : undefined} projects={projects} scope={scope} onChange={refreshAll} />
             ))}
           </div>
         </section>

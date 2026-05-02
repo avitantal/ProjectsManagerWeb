@@ -1,6 +1,7 @@
 import { useState } from 'react';
-import { Calendar, ChevronDown, ChevronUp, Paperclip, Trash2 } from 'lucide-react';
+import { Calendar, ChevronDown, ChevronUp, Paperclip, Pencil, Trash2 } from 'lucide-react';
 import { ProjectFiles } from './ProjectFiles';
+import { AddDialog } from './AddDialog';
 import {
   type Project,
   type ProjectStatus,
@@ -27,10 +28,11 @@ interface Props {
     completed: number;
     total: number;
   };
+  fileCount: number;
   onChange: () => void;
 }
 
-export function ProjectCard({ project, scope, progress, onChange }: Props) {
+export function ProjectCard({ project, scope, progress, fileCount, onChange }: Props) {
   const days = daysUntil(project.due_date);
   const overdue = days !== null && days < 0;
   const [statusDraft, setStatusDraft] = useState<StatusDraft>(() => ({
@@ -41,6 +43,7 @@ export function ProjectCard({ project, scope, progress, onChange }: Props) {
   const [savingStatus, setSavingStatus] = useState(false);
   const [confirmingDeleteId, setConfirmingDeleteId] = useState<number | null>(null);
   const [showFiles, setShowFiles] = useState(false);
+  const [editing, setEditing] = useState(false);
   const activeStatusDraft = statusDraft.projectId === project.id && statusDraft.savedStatus === project.status
     ? statusDraft
     : { projectId: project.id, savedStatus: project.status, value: project.status };
@@ -85,14 +88,24 @@ export function ProjectCard({ project, scope, progress, onChange }: Props) {
             </button>
           </div>
         ) : (
-          <button
-            type="button"
-            onClick={(e) => { e.stopPropagation(); setConfirmingDeleteId(project.id); }}
-            className="opacity-0 group-hover:opacity-100 text-muted hover:text-red-400 transition"
-            aria-label="מחק"
-          >
-            <Trash2 size={16} />
-          </button>
+          <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition">
+            <button
+              type="button"
+              onClick={(e) => { e.stopPropagation(); setEditing(true); }}
+              className="text-muted hover:text-accent"
+              aria-label="ערוך"
+            >
+              <Pencil size={16} />
+            </button>
+            <button
+              type="button"
+              onClick={(e) => { e.stopPropagation(); setConfirmingDeleteId(project.id); }}
+              className="text-muted hover:text-red-400"
+              aria-label="מחק"
+            >
+              <Trash2 size={16} />
+            </button>
+          </div>
         )}
       </div>
       {project.description && (
@@ -149,17 +162,34 @@ export function ProjectCard({ project, scope, progress, onChange }: Props) {
         )}
       </div>
 
-      <button
-        type="button"
-        onClick={(e) => { e.stopPropagation(); setShowFiles((v) => !v); }}
-        className="mt-3 inline-flex items-center gap-1 text-xs text-muted hover:text-text"
-      >
-        <Paperclip size={12} />
-        קבצים
-        {showFiles ? <ChevronUp size={12} /> : <ChevronDown size={12} />}
-      </button>
-      {showFiles && (
-        <ProjectFiles scope={scope} projectId={project.id} />
+      {fileCount > 0 && (
+        <>
+          <button
+            type="button"
+            onClick={(e) => { e.stopPropagation(); setShowFiles((v) => !v); }}
+            className="mt-3 inline-flex items-center gap-1 text-xs text-muted hover:text-text"
+          >
+            <Paperclip size={12} />
+            קבצים ({fileCount})
+            {showFiles ? <ChevronUp size={12} /> : <ChevronDown size={12} />}
+          </button>
+          {showFiles && (
+            <ProjectFiles scope={scope} projectId={project.id} />
+          )}
+        </>
+      )}
+
+      {editing && (
+        <div onClick={(e) => e.stopPropagation()}>
+          <AddDialog
+            scope={scope}
+            type="project"
+            projects={[]}
+            editing={project}
+            onClose={() => setEditing(false)}
+            onSaved={onChange}
+          />
+        </div>
       )}
     </div>
   );

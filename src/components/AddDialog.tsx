@@ -1,7 +1,7 @@
 import { useState, type FormEvent } from 'react';
 import { X } from 'lucide-react';
 import {
-  type Scope, type Project, supabase,
+  type Scope, type Project, type Task, supabase,
   PROJECT_STATUS_HE, PRIORITY_HE, TASK_STATUS_HE, TASK_PRIORITY_HE,
 } from '../lib/supabase';
 
@@ -10,17 +10,28 @@ interface Props {
   type: 'project' | 'task';
   projects: Project[];
   defaultProjectId?: number;
+  editing?: Project | Task;
   onClose: () => void;
   onSaved: () => void;
 }
 
-export function AddDialog({ scope, type, projects, defaultProjectId, onClose, onSaved }: Props) {
-  const [name, setName] = useState('');
-  const [status, setStatus] = useState(type === 'project' ? 'planned' : 'todo');
-  const [priority, setPriority] = useState(type === 'project' ? 'medium' : 'normal');
-  const [dueDate, setDueDate] = useState('');
-  const [text, setText] = useState('');
-  const [projectId, setProjectId] = useState<number | undefined>(defaultProjectId ?? projects[0]?.id);
+function isTask(entity: Project | Task | undefined): entity is Task {
+  return !!entity && 'project_id' in entity;
+}
+
+export function AddDialog({ scope, type, projects, defaultProjectId, editing, onClose, onSaved }: Props) {
+  const editMode = !!editing;
+  const editingTask = isTask(editing) ? editing : undefined;
+  const editingProject = !isTask(editing) ? (editing as Project | undefined) : undefined;
+
+  const [name, setName] = useState(editing?.name ?? '');
+  const [status, setStatus] = useState<string>(editing?.status ?? (type === 'project' ? 'planned' : 'todo'));
+  const [priority, setPriority] = useState<string>(editing?.priority ?? (type === 'project' ? 'medium' : 'normal'));
+  const [dueDate, setDueDate] = useState(editing?.due_date ?? '');
+  const [text, setText] = useState(editingProject?.description ?? editingTask?.notes ?? '');
+  const [projectId, setProjectId] = useState<number | undefined>(
+    editingTask?.project_id ?? defaultProjectId ?? projects[0]?.id,
+  );
   const [saving, setSaving] = useState(false);
 
   async function submit(e: FormEvent) {
@@ -36,19 +47,27 @@ export function AddDialog({ scope, type, projects, defaultProjectId, onClose, on
     };
     if (type === 'project') payload.description = text || null;
     else { payload.notes = text || null; payload.project_id = projectId; }
-    await supabase.from(table).insert(payload);
+
+    if (editMode && editing) {
+      payload.updated_at = new Date().toISOString();
+      await supabase.from(table).update(payload).eq('id', editing.id);
+    } else {
+      await supabase.from(table).insert(payload);
+    }
     setSaving(false);
     onSaved();
     onClose();
   }
 
+  const heading = editMode
+    ? (type === 'project' ? 'עריכת פרויקט' : 'עריכת משימה')
+    : (type === 'project' ? 'פרויקט חדש' : 'משימה חדשה');
+
   return (
     <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4" onClick={onClose}>
       <div className="card w-full max-w-md p-6" onClick={(e) => e.stopPropagation()}>
         <div className="flex items-center justify-between mb-5">
-          <h2 className="text-lg font-semibold">
-            {type === 'project' ? 'פרויקט חדש' : 'משימה חדשה'}
-          </h2>
+          <h2 className="text-lg font-semibold">{heading}</h2>
           <button onClick={onClose} className="text-muted hover:text-text"><X size={20} /></button>
         </div>
         <form onSubmit={submit} className="space-y-4">
@@ -98,7 +117,7 @@ export function AddDialog({ scope, type, projects, defaultProjectId, onClose, on
           <div className="flex gap-2 justify-end pt-2">
             <button type="button" onClick={onClose} className="btn-ghost">ביטול</button>
             <button type="submit" disabled={saving || !name.trim()} className="btn-primary disabled:opacity-50">
-              {saving ? 'שומר...' : 'שמור'}
+              {saving ? 'שומר...' : editMode ? 'עדכן' : 'שמור'}
             </button>
           </div>
         </form>

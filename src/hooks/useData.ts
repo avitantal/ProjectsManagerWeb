@@ -1,6 +1,28 @@
 import { useEffect, useState, useCallback } from 'react';
 import { supabase, type Project, type Task, type Scope } from '../lib/supabase';
 
+export function useFileCounts(scope: Scope) {
+  const [counts, setCounts] = useState<Map<number, number>>(new Map());
+
+  const refresh = useCallback(async () => {
+    const { data } = await supabase
+      .from('project_files')
+      .select('project_id')
+      .eq('project_type', scope);
+    const m = new Map<number, number>();
+    (data ?? []).forEach((r: { project_id: number }) => {
+      m.set(r.project_id, (m.get(r.project_id) ?? 0) + 1);
+    });
+    setCounts(m);
+  }, [scope]);
+
+  useEffect(() => {
+    void refresh();
+  }, [refresh]);
+
+  return { counts, refresh };
+}
+
 export function useProjects(scope: Scope) {
   const [projects, setProjects] = useState<Project[]>([]);
   const [loading, setLoading] = useState(true);
