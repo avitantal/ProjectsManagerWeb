@@ -111,7 +111,7 @@ export function Auth() {
                 required
                 autoFocus
                 dir="ltr"
-                autoComplete="username"
+                autoComplete="email"
               />
             </div>
             <div>
@@ -158,7 +158,7 @@ export function Auth() {
                 required
                 autoFocus
                 dir="ltr"
-                autoComplete="username"
+                autoComplete="email"
               />
             </div>
             {error && <div className="text-xs text-red-400">{error}</div>}
