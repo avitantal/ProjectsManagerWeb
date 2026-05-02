@@ -1,5 +1,5 @@
 import { useState, useMemo } from 'react';
-import { Plus, RefreshCw, Factory, House, LogOut, Loader2 } from 'lucide-react';
+import { Plus, RefreshCw, Factory, House, LogOut, Loader2, FolderKanban, ListTodo } from 'lucide-react';
 import { useProjects, useTasks, useFileCounts } from './hooks/useData';
 import { useAuth } from './hooks/useAuth';
 import { supabase, type Scope } from './lib/supabase';
@@ -15,6 +15,7 @@ function ScopeView({ scope }: { scope: Scope }) {
   const { tasks, refresh: refreshTasks } = useTasks(scope);
   const { counts: fileCounts, refresh: refreshFileCounts } = useFileCounts(scope);
   const [filterProjectId, setFilterProjectId] = useState<number | null>(null);
+  const [view, setView] = useState<'projects' | 'orphans'>('projects');
   const [showAdd, setShowAdd] = useState<null | 'project' | 'task'>(null);
 
   function refreshAll() { refreshProjects(); refreshTasks(); refreshFileCounts(); }
@@ -31,9 +32,11 @@ function ScopeView({ scope }: { scope: Scope }) {
     return m;
   }, [tasks]);
 
-  const filteredTasks = filterProjectId === null
-    ? tasks
-    : tasks.filter(t => t.project_id === filterProjectId);
+  const filteredTasks = view === 'orphans'
+    ? tasks.filter(t => !t.project_id)
+    : filterProjectId === null
+      ? tasks
+      : tasks.filter(t => t.project_id === filterProjectId);
 
   const projectsById = useMemo(() => new Map(projects.map(p => [p.id, p])), [projects]);
 
@@ -41,8 +44,25 @@ function ScopeView({ scope }: { scope: Scope }) {
     <>
       <Stats projects={projects} tasks={tasks} />
 
-      <div className="grid grid-cols-1 lg:grid-cols-[1fr,1.5fr] gap-6">
-        {/* Projects column */}
+      <div className="flex justify-center mb-4">
+        <div className="flex bg-surface rounded-lg p-1 border border-border">
+          <button
+            onClick={() => setView('projects')}
+            className={cn('btn text-sm px-3 py-1.5', view === 'projects' ? 'bg-accent text-white' : 'text-muted hover:text-text')}
+          >
+            <FolderKanban size={14} /> פרויקטים
+          </button>
+          <button
+            onClick={() => setView('orphans')}
+            className={cn('btn text-sm px-3 py-1.5', view === 'orphans' ? 'bg-accent text-white' : 'text-muted hover:text-text')}
+          >
+            <ListTodo size={14} /> ללא פרויקט
+          </button>
+        </div>
+      </div>
+
+      <div className={cn('grid grid-cols-1 gap-6', view === 'projects' && 'lg:grid-cols-[1fr,1.5fr]')}>
+        {view === 'projects' && (
         <section>
           <div className="flex items-center justify-between mb-3">
             <h2 className="text-lg font-semibold">פרויקטים</h2>
@@ -62,19 +82,20 @@ function ScopeView({ scope }: { scope: Scope }) {
             ))}
           </div>
         </section>
+        )}
 
         {/* Tasks column */}
         <section>
           <div className="flex items-center justify-between mb-3">
             <div className="flex items-center gap-2">
               <h2 className="text-lg font-semibold">משימות</h2>
-              {filterProjectId !== null && (
+              {view === 'projects' && filterProjectId !== null && (
                 <button onClick={() => setFilterProjectId(null)} className="text-xs text-accent hover:underline">
                   ניקוי סינון
                 </button>
               )}
             </div>
-            <button onClick={() => setShowAdd('task')} disabled={projects.length === 0} className="btn-primary text-xs disabled:opacity-50">
+            <button onClick={() => setShowAdd('task')} disabled={view === 'projects' && projects.length === 0} className="btn-primary text-xs disabled:opacity-50">
               <Plus size={14} /> הוסף
             </button>
           </div>
@@ -94,7 +115,7 @@ function ScopeView({ scope }: { scope: Scope }) {
           scope={scope}
           type={showAdd}
           projects={projects}
-          defaultProjectId={filterProjectId ?? undefined}
+          defaultProjectId={view === 'orphans' ? null : (filterProjectId ?? undefined)}
           onClose={() => setShowAdd(null)}
           onSaved={refreshAll}
         />
