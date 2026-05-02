@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect, useRef } from 'react';
 import type { Session } from '@supabase/supabase-js';
 import { Plus, RefreshCw, Factory, House, LogOut, Loader2, FolderKanban, ListTodo } from 'lucide-react';
 import { useProjects, useTasks, useFileCounts } from './hooks/useData';
@@ -24,6 +24,17 @@ function ScopeView({ scope, setScope, session }: ScopeViewProps) {
   const [filterProjectId, setFilterProjectId] = useState<number | null>(null);
   const [view, setView] = useState<'projects' | 'orphans'>('projects');
   const [showAdd, setShowAdd] = useState<null | 'project' | 'task'>(null);
+  const [menuOpen, setMenuOpen] = useState(false);
+  const menuRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!menuOpen) return;
+    function handler(e: MouseEvent) {
+      if (menuRef.current && !menuRef.current.contains(e.target as Node)) setMenuOpen(false);
+    }
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, [menuOpen]);
 
   function refreshAll() { refreshProjects(); refreshTasks(); refreshFileCounts(); }
 
@@ -51,30 +62,48 @@ function ScopeView({ scope, setScope, session }: ScopeViewProps) {
     <>
       <header className="border-b border-border bg-bg/80 backdrop-blur sticky top-0 z-40">
         <div className="max-w-7xl mx-auto px-4 py-2 sm:py-3 flex items-center justify-between gap-3">
-          <h1 className="text-base sm:text-xl font-semibold whitespace-nowrap flex items-baseline gap-1.5">
-            🎯 ניהול פרויקטים
-            <span className="text-[10px] font-normal text-muted/70" dir="ltr">V1.01</span>
-          </h1>
-          <div className="flex items-center gap-2">
-            <div className="flex bg-surface rounded-lg p-1 border border-border">
-              <button
-                onClick={() => setScope('factory')}
-                className={cn('btn text-sm px-3 py-1.5', scope === 'factory' ? 'bg-accent text-white' : 'text-muted hover:text-text')}
-              >
-                <Factory size={14} /> מפעל
-              </button>
-              <button
-                onClick={() => setScope('personal')}
-                className={cn('btn text-sm px-3 py-1.5', scope === 'personal' ? 'bg-accent text-white' : 'text-muted hover:text-text')}
-              >
-                <House size={14} /> אישי
-              </button>
-            </div>
-            <button onClick={() => window.location.reload()} className="btn-ghost" aria-label="רענן">
-              <RefreshCw size={16} />
+          <div ref={menuRef} className="relative">
+            <button
+              onClick={() => setMenuOpen(o => !o)}
+              className="text-base sm:text-xl font-semibold whitespace-nowrap flex items-baseline gap-1.5 hover:opacity-80"
+              aria-haspopup="menu"
+              aria-expanded={menuOpen}
+              title={session.user.email ?? ''}
+            >
+              🎯 ניהול פרויקטים
+              <span className="text-[10px] font-normal text-muted/70" dir="ltr">V1.02</span>
             </button>
-            <button onClick={() => supabase.auth.signOut()} className="btn-ghost" aria-label="התנתק" title={session.user.email ?? ''}>
-              <LogOut size={16} />
+            {menuOpen && (
+              <div className="absolute top-full right-0 mt-1 min-w-[160px] card p-1 z-50 shadow-lg" role="menu">
+                <button
+                  onClick={() => { setMenuOpen(false); window.location.reload(); }}
+                  className="w-full flex items-center gap-2 px-3 py-2 text-sm rounded-md hover:bg-surface text-right"
+                  role="menuitem"
+                >
+                  <RefreshCw size={14} /> רענן
+                </button>
+                <button
+                  onClick={() => { setMenuOpen(false); void supabase.auth.signOut(); }}
+                  className="w-full flex items-center gap-2 px-3 py-2 text-sm rounded-md hover:bg-surface text-right"
+                  role="menuitem"
+                >
+                  <LogOut size={14} /> התנתק
+                </button>
+              </div>
+            )}
+          </div>
+          <div className="flex bg-surface rounded-lg p-1 border border-border">
+            <button
+              onClick={() => setScope('factory')}
+              className={cn('btn text-sm px-3 py-1.5', scope === 'factory' ? 'bg-accent text-white' : 'text-muted hover:text-text')}
+            >
+              <Factory size={14} /> מפעל
+            </button>
+            <button
+              onClick={() => setScope('personal')}
+              className={cn('btn text-sm px-3 py-1.5', scope === 'personal' ? 'bg-accent text-white' : 'text-muted hover:text-text')}
+            >
+              <House size={14} /> אישי
             </button>
           </div>
         </div>
