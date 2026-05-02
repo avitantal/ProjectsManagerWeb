@@ -31,8 +31,20 @@ export interface Task {
   priority: TaskPriority;
   due_date: string | null;
   notes: string | null;
+  is_suggested: boolean;
   created_at: string;
   updated_at: string;
+}
+
+export interface ProjectFile {
+  id: number;
+  project_type: Scope;
+  project_id: number;
+  file_name: string;
+  storage_path: string | null;
+  content_type: string | null;
+  size_bytes: number | null;
+  uploaded_at: string;
 }
 
 export const PROJECT_STATUS_HE: Record<ProjectStatus, string> = {

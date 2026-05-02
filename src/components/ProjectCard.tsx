@@ -1,5 +1,6 @@
 import { useState } from 'react';
-import { Calendar, Trash2 } from 'lucide-react';
+import { Calendar, ChevronDown, ChevronUp, Paperclip, Trash2 } from 'lucide-react';
+import { ProjectFiles } from './ProjectFiles';
 import {
   type Project,
   type ProjectStatus,
@@ -39,6 +40,7 @@ export function ProjectCard({ project, scope, progress, onChange }: Props) {
   }));
   const [savingStatus, setSavingStatus] = useState(false);
   const [confirmingDeleteId, setConfirmingDeleteId] = useState<number | null>(null);
+  const [showFiles, setShowFiles] = useState(false);
   const activeStatusDraft = statusDraft.projectId === project.id && statusDraft.savedStatus === project.status
     ? statusDraft
     : { projectId: project.id, savedStatus: project.status, value: project.status };
@@ -146,6 +148,19 @@ export function ProjectCard({ project, scope, progress, onChange }: Props) {
           </span>
         )}
       </div>
+
+      <button
+        type="button"
+        onClick={(e) => { e.stopPropagation(); setShowFiles((v) => !v); }}
+        className="mt-3 inline-flex items-center gap-1 text-xs text-muted hover:text-text"
+      >
+        <Paperclip size={12} />
+        קבצים
+        {showFiles ? <ChevronUp size={12} /> : <ChevronDown size={12} />}
+      </button>
+      {showFiles && (
+        <ProjectFiles scope={scope} projectId={project.id} onTasksChange={onChange} />
+      )}
     </div>
   );
 }

@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Trash2 } from 'lucide-react';
+import { Check, Sparkles, Trash2 } from 'lucide-react';
 import {
   type Task,
   type TaskStatus,
@@ -75,6 +75,11 @@ export function TaskRow({ task, project, scope, onChange }: Props) {
     onChange();
   }
 
+  async function approveSuggested() {
+    await supabase.from(`${scope}_tasks`).update({ is_suggested: false }).eq('id', task.id);
+    onChange();
+  }
+
   function cancelChanges() {
     setDraft({ ...activeDraft, status: task.status, priority: task.priority });
   }
@@ -83,8 +88,14 @@ export function TaskRow({ task, project, scope, onChange }: Props) {
     setDraft({ ...activeDraft, ...next });
   }
 
+  const suggested = task.is_suggested;
+
   return (
-    <div className="card p-3 hover:border-zinc-600 transition-colors group flex flex-col gap-3 sm:flex-row sm:items-center">
+    <div className={`card p-3 transition-colors group flex flex-col gap-3 sm:flex-row sm:items-center ${
+      suggested
+        ? 'bg-purple-500/10 border-dashed border-purple-500/40 hover:border-purple-400/60'
+        : 'hover:border-zinc-600'
+    }`}>
       <div className="flex min-w-0 flex-1 items-center gap-3">
         <input
           type="checkbox"
@@ -95,8 +106,10 @@ export function TaskRow({ task, project, scope, onChange }: Props) {
           aria-label="סמן כהושלם"
         />
         <div className="flex-1 min-w-0">
-          <div className={`text-sm leading-tight ${draftStatus === 'done' ? 'line-through text-muted' : ''}`}>
-            {task.name}
+          <div className={`text-sm leading-tight flex items-center gap-1.5 ${draftStatus === 'done' ? 'line-through text-muted' : ''}`}>
+            {suggested && <Sparkles size={12} className="text-purple-400 shrink-0" />}
+            <span className="truncate">{task.name}</span>
+            {suggested && <span className="chip bg-purple-500/20 text-purple-300 text-[10px] shrink-0">מוצע ע״י AI</span>}
           </div>
           {project && (
             <div className="text-xs text-muted mt-0.5 truncate">{project.name}</div>
@@ -133,6 +146,17 @@ export function TaskRow({ task, project, scope, onChange }: Props) {
             onSave={() => void saveChanges()}
             onCancel={cancelChanges}
           />
+        )}
+        {suggested && (
+          <button
+            type="button"
+            onClick={() => void approveSuggested()}
+            className="rounded-md bg-green-500/20 px-2 py-1 text-xs text-green-300 hover:bg-green-500/30 inline-flex items-center gap-1"
+            title="אשר משימה"
+          >
+            <Check size={12} />
+            אשר
+          </button>
         )}
         {confirmingDelete ? (
           <div className="flex items-center gap-1 shrink-0">
