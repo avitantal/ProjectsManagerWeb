@@ -51,7 +51,10 @@ function ScopeView({ scope, setScope, session }: ScopeViewProps) {
     <>
       <header className="border-b border-border bg-bg/80 backdrop-blur sticky top-0 z-40">
         <div className="max-w-7xl mx-auto px-4 py-2 sm:py-3 flex items-center justify-between gap-3">
-          <h1 className="text-base sm:text-xl font-semibold whitespace-nowrap">🎯 ניהול פרויקטים</h1>
+          <h1 className="text-base sm:text-xl font-semibold whitespace-nowrap flex items-baseline gap-1.5">
+            🎯 ניהול פרויקטים
+            <span className="text-[10px] font-normal text-muted/70" dir="ltr">V1.01</span>
+          </h1>
           <div className="flex items-center gap-2">
             <div className="flex bg-surface rounded-lg p-1 border border-border">
               <button
