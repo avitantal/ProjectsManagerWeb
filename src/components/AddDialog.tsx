@@ -9,7 +9,7 @@ interface Props {
   scope: Scope;
   type: 'project' | 'task';
   projects: Project[];
-  defaultProjectId?: number;
+  defaultProjectId?: number | null;
   editing?: Project | Task;
   onClose: () => void;
   onSaved: () => void;
@@ -29,8 +29,8 @@ export function AddDialog({ scope, type, projects, defaultProjectId, editing, on
   const [priority, setPriority] = useState<string>(editing?.priority ?? (type === 'project' ? 'medium' : 'normal'));
   const [dueDate, setDueDate] = useState(editing?.due_date ?? '');
   const [text, setText] = useState(editingProject?.description ?? editingTask?.notes ?? '');
-  const [projectId, setProjectId] = useState<number | undefined>(
-    editingTask?.project_id ?? defaultProjectId ?? projects[0]?.id,
+  const [projectId, setProjectId] = useState<number | null>(
+    editMode ? (editingTask?.project_id ?? null) : (defaultProjectId ?? null),
   );
   const [saving, setSaving] = useState(false);
 
@@ -46,7 +46,7 @@ export function AddDialog({ scope, type, projects, defaultProjectId, editing, on
       due_date: dueDate || null,
     };
     if (type === 'project') payload.description = text || null;
-    else { payload.notes = text || null; payload.project_id = projectId; }
+    else { payload.notes = text || null; payload.project_id = projectId ?? null; }
 
     if (editMode && editing) {
       payload.updated_at = new Date().toISOString();
@@ -79,7 +79,8 @@ export function AddDialog({ scope, type, projects, defaultProjectId, editing, on
           {type === 'task' && (
             <div>
               <label className="block text-xs text-muted mb-1">פרויקט</label>
-              <select className="input" value={projectId ?? ''} onChange={(e) => setProjectId(Number(e.target.value))}>
+              <select className="input" value={projectId ?? ''} onChange={(e) => setProjectId(e.target.value ? Number(e.target.value) : null)}>
+                <option value="">ללא פרויקט</option>
                 {projects.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
               </select>
             </div>
