@@ -28,7 +28,7 @@ npm install
 
 ```env
 VITE_SUPABASE_URL=your-supabase-url
-VITE_SUPABASE_ANON_KEY=your-anon-key
+VITE_SUPABASE_KEY=your-anon-or-publishable-key
 ```
 
 ## 🚀 שימוש
