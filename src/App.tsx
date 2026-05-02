@@ -1,14 +1,13 @@
 import { useState, useMemo } from 'react';
-import { Plus, RefreshCw, Factory, House, LogOut, KeyRound } from 'lucide-react';
+import { Plus, RefreshCw, Factory, House, LogOut, Loader2 } from 'lucide-react';
 import { useProjects, useTasks } from './hooks/useData';
-import { type Scope } from './lib/supabase';
+import { useAuth } from './hooks/useAuth';
+import { supabase, type Scope } from './lib/supabase';
 import { Stats } from './components/Stats';
 import { ProjectCard } from './components/ProjectCard';
 import { TaskRow } from './components/TaskRow';
 import { AddDialog } from './components/AddDialog';
 import { Auth } from './components/Auth';
-import { SetPasswordDialog } from './components/SetPasswordDialog';
-import { isAppUnlocked, setAppUnlocked } from './lib/appPassword';
 import { cn } from './lib/utils';
 
 function ScopeView({ scope }: { scope: Scope }) {
@@ -104,20 +103,13 @@ function ScopeView({ scope }: { scope: Scope }) {
 }
 
 export default function App() {
+  const { session, loading } = useAuth();
   const [scope, setScope] = useState<Scope>('factory');
-  const [showPasswordDialog, setShowPasswordDialog] = useState(false);
-  const [unlocked, setUnlocked] = useState(() => isAppUnlocked());
 
-  function handleUnlocked() {
-    setUnlocked(true);
+  if (loading) {
+    return <div className="min-h-screen flex items-center justify-center"><Loader2 className="animate-spin text-muted" size={24} /></div>;
   }
-
-  function signOut() {
-    setAppUnlocked(false);
-    setUnlocked(false);
-  }
-
-  if (!unlocked) return <Auth onUnlocked={handleUnlocked} />;
+  if (!session) return <Auth />;
 
   return (
     <div className="min-h-screen">
@@ -142,15 +134,7 @@ export default function App() {
             <button onClick={() => window.location.reload()} className="btn-ghost" aria-label="רענן">
               <RefreshCw size={16} />
             </button>
-            <button
-              onClick={() => setShowPasswordDialog(true)}
-              className="btn-ghost"
-              aria-label="הגדר סיסמה"
-              title="הגדר סיסמה"
-            >
-              <KeyRound size={16} />
-            </button>
-            <button onClick={signOut} className="btn-ghost" aria-label="התנתק">
+            <button onClick={() => supabase.auth.signOut()} className="btn-ghost" aria-label="התנתק" title={session.user.email ?? ''}>
               <LogOut size={16} />
             </button>
           </div>
@@ -160,12 +144,6 @@ export default function App() {
       <main className="max-w-7xl mx-auto px-4 py-6">
         <ScopeView key={scope} scope={scope} />
       </main>
-
-      {showPasswordDialog && (
-        <SetPasswordDialog
-          onClose={() => setShowPasswordDialog(false)}
-        />
-      )}
     </div>
   );
 }
