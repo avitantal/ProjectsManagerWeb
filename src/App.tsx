@@ -1,4 +1,5 @@
 import { useState, useMemo } from 'react';
+import type { Session } from '@supabase/supabase-js';
 import { Plus, RefreshCw, Factory, House, LogOut, Loader2, FolderKanban, ListTodo } from 'lucide-react';
 import { useProjects, useTasks, useFileCounts } from './hooks/useData';
 import { useAuth } from './hooks/useAuth';
@@ -10,7 +11,13 @@ import { AddDialog } from './components/AddDialog';
 import { Auth } from './components/Auth';
 import { cn } from './lib/utils';
 
-function ScopeView({ scope }: { scope: Scope }) {
+interface ScopeViewProps {
+  scope: Scope;
+  setScope: (s: Scope) => void;
+  session: Session;
+}
+
+function ScopeView({ scope, setScope, session }: ScopeViewProps) {
   const { projects, refresh: refreshProjects } = useProjects(scope);
   const { tasks, refresh: refreshTasks } = useTasks(scope);
   const { counts: fileCounts, refresh: refreshFileCounts } = useFileCounts(scope);
@@ -42,73 +49,103 @@ function ScopeView({ scope }: { scope: Scope }) {
 
   return (
     <>
-      <Stats projects={projects} tasks={tasks} />
-
-      <div className="flex justify-center mb-4">
-        <div className="flex bg-surface rounded-lg p-1 border border-border">
-          <button
-            onClick={() => setView('projects')}
-            className={cn('btn text-sm px-3 py-1.5', view === 'projects' ? 'bg-accent text-white' : 'text-muted hover:text-text')}
-          >
-            <FolderKanban size={14} /> פרויקטים
-          </button>
-          <button
-            onClick={() => setView('orphans')}
-            className={cn('btn text-sm px-3 py-1.5', view === 'orphans' ? 'bg-accent text-white' : 'text-muted hover:text-text')}
-          >
-            <ListTodo size={14} /> ללא פרויקט
-          </button>
-        </div>
-      </div>
-
-      <div className={cn('grid grid-cols-1 gap-6', view === 'projects' && 'lg:grid-cols-[1fr,1.5fr]')}>
-        {view === 'projects' && (
-        <section>
-          <div className="flex items-center justify-between mb-3">
-            <h2 className="text-lg font-semibold">פרויקטים</h2>
-            <button onClick={() => setShowAdd('project')} className="btn-primary text-xs">
-              <Plus size={14} /> הוסף
-            </button>
-          </div>
-          <div className="space-y-3">
-            {projects.length === 0 && (
-              <div className="card p-6 text-center text-muted text-sm">אין פרויקטים עדיין</div>
-            )}
-            {projects.map(p => (
-              <div key={p.id} onClick={() => setFilterProjectId(filterProjectId === p.id ? null : p.id)}
-                   className={cn('cursor-pointer', filterProjectId === p.id && 'ring-1 ring-accent rounded-xl')}>
-                <ProjectCard project={p} scope={scope} progress={projectProgress.get(p.id) ?? { completed: 0, total: 0 }} fileCount={fileCounts.get(p.id) ?? 0} onChange={refreshAll} />
-              </div>
-            ))}
-          </div>
-        </section>
-        )}
-
-        {/* Tasks column */}
-        <section>
-          <div className="flex items-center justify-between mb-3">
-            <div className="flex items-center gap-2">
-              <h2 className="text-lg font-semibold">משימות</h2>
-              {view === 'projects' && filterProjectId !== null && (
-                <button onClick={() => setFilterProjectId(null)} className="text-xs text-accent hover:underline">
-                  ניקוי סינון
-                </button>
-              )}
+      <header className="border-b border-border bg-bg/80 backdrop-blur sticky top-0 z-40">
+        <div className="max-w-7xl mx-auto px-4 py-2 sm:py-3 flex items-center justify-between gap-3">
+          <h1 className="text-base sm:text-xl font-semibold whitespace-nowrap">🎯 ניהול פרויקטים</h1>
+          <div className="flex items-center gap-2">
+            <div className="flex bg-surface rounded-lg p-1 border border-border">
+              <button
+                onClick={() => setScope('factory')}
+                className={cn('btn text-sm px-3 py-1.5', scope === 'factory' ? 'bg-accent text-white' : 'text-muted hover:text-text')}
+              >
+                <Factory size={14} /> מפעל
+              </button>
+              <button
+                onClick={() => setScope('personal')}
+                className={cn('btn text-sm px-3 py-1.5', scope === 'personal' ? 'bg-accent text-white' : 'text-muted hover:text-text')}
+              >
+                <House size={14} /> אישי
+              </button>
             </div>
-            <button onClick={() => setShowAdd('task')} disabled={view === 'projects' && projects.length === 0} className="btn-primary text-xs disabled:opacity-50">
-              <Plus size={14} /> הוסף
+            <button onClick={() => window.location.reload()} className="btn-ghost" aria-label="רענן">
+              <RefreshCw size={16} />
+            </button>
+            <button onClick={() => supabase.auth.signOut()} className="btn-ghost" aria-label="התנתק" title={session.user.email ?? ''}>
+              <LogOut size={16} />
             </button>
           </div>
-          <div className="space-y-2">
-            {filteredTasks.length === 0 && (
-              <div className="card p-6 text-center text-muted text-sm">אין משימות</div>
-            )}
-            {filteredTasks.map(t => (
-              <TaskRow key={t.id} task={t} project={t.project_id ? projectsById.get(t.project_id) : undefined} projects={projects} scope={scope} onChange={refreshAll} />
-            ))}
+        </div>
+        <div className="max-w-7xl mx-auto px-4 pb-2 border-t border-border/50">
+          <Stats projects={projects} tasks={tasks} />
+        </div>
+      </header>
+
+      <main className="max-w-7xl mx-auto px-4 py-6">
+        <div className="flex justify-center mb-4">
+          <div className="flex bg-surface rounded-lg p-1 border border-border">
+            <button
+              onClick={() => setView('projects')}
+              className={cn('btn text-sm px-3 py-1.5', view === 'projects' ? 'bg-accent text-white' : 'text-muted hover:text-text')}
+            >
+              <FolderKanban size={14} /> פרויקטים
+            </button>
+            <button
+              onClick={() => setView('orphans')}
+              className={cn('btn text-sm px-3 py-1.5', view === 'orphans' ? 'bg-accent text-white' : 'text-muted hover:text-text')}
+            >
+              <ListTodo size={14} /> ללא פרויקט
+            </button>
           </div>
-        </section>
-      </div>
+        </div>
+
+        <div className={cn('grid grid-cols-1 gap-6', view === 'projects' && 'lg:grid-cols-[1fr,1.5fr]')}>
+          {view === 'projects' && (
+          <section>
+            <div className="flex items-center justify-between mb-3">
+              <h2 className="text-lg font-semibold">פרויקטים</h2>
+              <button onClick={() => setShowAdd('project')} className="btn-primary text-xs">
+                <Plus size={14} /> הוסף
+              </button>
+            </div>
+            <div className="space-y-3">
+              {projects.length === 0 && (
+                <div className="card p-6 text-center text-muted text-sm">אין פרויקטים עדיין</div>
+              )}
+              {projects.map(p => (
+                <div key={p.id} onClick={() => setFilterProjectId(filterProjectId === p.id ? null : p.id)}
+                     className={cn('cursor-pointer', filterProjectId === p.id && 'ring-1 ring-accent rounded-xl')}>
+                  <ProjectCard project={p} scope={scope} progress={projectProgress.get(p.id) ?? { completed: 0, total: 0 }} fileCount={fileCounts.get(p.id) ?? 0} onChange={refreshAll} />
+                </div>
+              ))}
+            </div>
+          </section>
+          )}
+
+          <section>
+            <div className="flex items-center justify-between mb-3">
+              <div className="flex items-center gap-2">
+                <h2 className="text-lg font-semibold">משימות</h2>
+                {view === 'projects' && filterProjectId !== null && (
+                  <button onClick={() => setFilterProjectId(null)} className="text-xs text-accent hover:underline">
+                    ניקוי סינון
+                  </button>
+                )}
+              </div>
+              <button onClick={() => setShowAdd('task')} disabled={view === 'projects' && projects.length === 0} className="btn-primary text-xs disabled:opacity-50">
+                <Plus size={14} /> הוסף
+              </button>
+            </div>
+            <div className="space-y-2">
+              {filteredTasks.length === 0 && (
+                <div className="card p-6 text-center text-muted text-sm">אין משימות</div>
+              )}
+              {filteredTasks.map(t => (
+                <TaskRow key={t.id} task={t} project={t.project_id ? projectsById.get(t.project_id) : undefined} projects={projects} scope={scope} onChange={refreshAll} />
+              ))}
+            </div>
+          </section>
+        </div>
+      </main>
 
       {showAdd && (
         <AddDialog
@@ -135,37 +172,7 @@ export default function App() {
 
   return (
     <div className="min-h-screen">
-      <header className="border-b border-border bg-bg/80 backdrop-blur sticky top-0 z-40">
-        <div className="max-w-7xl mx-auto px-4 py-3 flex items-center justify-between gap-4">
-          <h1 className="text-xl font-semibold">🎯 ניהול פרויקטים</h1>
-          <div className="flex items-center gap-2">
-            <div className="flex bg-surface rounded-lg p-1 border border-border">
-              <button
-                onClick={() => setScope('factory')}
-                className={cn('btn text-sm px-3 py-1.5', scope === 'factory' ? 'bg-accent text-white' : 'text-muted hover:text-text')}
-              >
-                <Factory size={14} /> מפעל
-              </button>
-              <button
-                onClick={() => setScope('personal')}
-                className={cn('btn text-sm px-3 py-1.5', scope === 'personal' ? 'bg-accent text-white' : 'text-muted hover:text-text')}
-              >
-                <House size={14} /> אישי
-              </button>
-            </div>
-            <button onClick={() => window.location.reload()} className="btn-ghost" aria-label="רענן">
-              <RefreshCw size={16} />
-            </button>
-            <button onClick={() => supabase.auth.signOut()} className="btn-ghost" aria-label="התנתק" title={session.user.email ?? ''}>
-              <LogOut size={16} />
-            </button>
-          </div>
-        </div>
-      </header>
-
-      <main className="max-w-7xl mx-auto px-4 py-6">
-        <ScopeView key={scope} scope={scope} />
-      </main>
+      <ScopeView key={scope} scope={scope} setScope={setScope} session={session} />
     </div>
   );
 }
