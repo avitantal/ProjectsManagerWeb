@@ -41,9 +41,10 @@ export interface ProjectFile {
   project_type: Scope;
   project_id: number;
   file_name: string;
-  storage_path: string | null;
-  content_type: string | null;
-  size_bytes: number | null;
+  file_type: string | null;
+  google_drive_url: string | null;
+  google_drive_file_id: string | null;
+  summary: string | null;
   uploaded_at: string;
 }
 

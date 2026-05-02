@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { FileText, Loader2, Sparkles, Trash2, Upload } from 'lucide-react';
+import { ExternalLink, FileText, Loader2, Plus, Sparkles, Trash2 } from 'lucide-react';
 import { supabase, type ProjectFile, type Scope } from '../lib/supabase';
 
 interface Props {
@@ -8,13 +8,35 @@ interface Props {
   onTasksChange: () => void;
 }
 
-const ACCEPTED = '.txt,.md,.markdown,.csv,.json,.log,text/plain,text/markdown';
-const MAX_BYTES = 2 * 1024 * 1024;
+function extractDriveFileId(url: string): string | null {
+  const patterns = [
+    /\/file\/d\/([a-zA-Z0-9_-]{20,})/,
+    /\/document\/d\/([a-zA-Z0-9_-]{20,})/,
+    /\/spreadsheets\/d\/([a-zA-Z0-9_-]{20,})/,
+    /\/presentation\/d\/([a-zA-Z0-9_-]{20,})/,
+    /[?&]id=([a-zA-Z0-9_-]{20,})/,
+  ];
+  for (const re of patterns) {
+    const m = url.match(re);
+    if (m) return m[1];
+  }
+  return null;
+}
+
+function deriveFileName(url: string): string {
+  if (url.includes('/document/d/')) return 'Google Doc';
+  if (url.includes('/spreadsheets/d/')) return 'Google Sheet';
+  if (url.includes('/presentation/d/')) return 'Google Slides';
+  return 'Drive file';
+}
 
 export function ProjectFiles({ scope, projectId, onTasksChange }: Props) {
   const [files, setFiles] = useState<ProjectFile[]>([]);
   const [loading, setLoading] = useState(true);
-  const [uploading, setUploading] = useState(false);
+  const [adding, setAdding] = useState(false);
+  const [showAdd, setShowAdd] = useState(false);
+  const [url, setUrl] = useState('');
+  const [name, setName] = useState('');
   const [extractingId, setExtractingId] = useState<number | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [message, setMessage] = useState<string | null>(null);
@@ -35,38 +57,37 @@ export function ProjectFiles({ scope, projectId, onTasksChange }: Props) {
     void refresh();
   }, [scope, projectId]);
 
-  async function handleUpload(e: React.ChangeEvent<HTMLInputElement>) {
-    const file = e.target.files?.[0];
-    e.target.value = '';
-    if (!file) return;
+  async function addFile() {
     setError(null);
     setMessage(null);
-    if (file.size > MAX_BYTES) {
-      setError(`הקובץ גדול מדי (מקסימום ${MAX_BYTES / 1024 / 1024}MB)`);
+    const trimmedUrl = url.trim();
+    if (!trimmedUrl) {
+      setError('הדבק קישור Drive');
       return;
     }
-    setUploading(true);
+    const fileId = extractDriveFileId(trimmedUrl);
+    if (!fileId) {
+      setError('לא הצלחתי לזהות מזהה קובץ Drive בקישור');
+      return;
+    }
+    setAdding(true);
     try {
-      const path = `${scope}/${projectId}/${Date.now()}-${file.name}`;
-      const { error: upErr } = await supabase.storage
-        .from('project-files')
-        .upload(path, file, { contentType: file.type || 'text/plain' });
-      if (upErr) throw upErr;
-
       const { error: insErr } = await supabase.from('project_files').insert({
         project_type: scope,
         project_id: projectId,
-        file_name: file.name,
-        storage_path: path,
-        content_type: file.type || null,
-        size_bytes: file.size,
+        file_name: name.trim() || deriveFileName(trimmedUrl),
+        google_drive_url: trimmedUrl,
+        google_drive_file_id: fileId,
       });
       if (insErr) throw insErr;
+      setUrl('');
+      setName('');
+      setShowAdd(false);
       await refresh();
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'שגיאה בהעלאה');
+      setError(err instanceof Error ? err.message : 'שגיאה בהוספה');
     } finally {
-      setUploading(false);
+      setAdding(false);
     }
   }
 
@@ -90,10 +111,7 @@ export function ProjectFiles({ scope, projectId, onTasksChange }: Props) {
   }
 
   async function removeFile(file: ProjectFile) {
-    if (!confirm(`למחוק את ${file.file_name}?`)) return;
-    if (file.storage_path) {
-      await supabase.storage.from('project-files').remove([file.storage_path]);
-    }
+    if (!confirm(`להסיר את ${file.file_name} מהפרויקט? (הקובץ ב-Drive לא יימחק)`)) return;
     await supabase.from('project_files').delete().eq('id', file.id);
     await refresh();
   }
@@ -101,13 +119,56 @@ export function ProjectFiles({ scope, projectId, onTasksChange }: Props) {
   return (
     <div className="border-t border-border pt-3 mt-3 space-y-2" onClick={(e) => e.stopPropagation()}>
       <div className="flex items-center justify-between">
-        <div className="text-xs text-muted">קבצים</div>
-        <label className="btn-ghost text-xs cursor-pointer">
-          {uploading ? <Loader2 size={12} className="animate-spin" /> : <Upload size={12} />}
-          העלאה
-          <input type="file" className="hidden" accept={ACCEPTED} onChange={handleUpload} disabled={uploading} />
-        </label>
+        <div className="text-xs text-muted">קבצים מ-Drive</div>
+        <button
+          type="button"
+          onClick={() => { setShowAdd((v) => !v); setError(null); setMessage(null); }}
+          className="btn-ghost text-xs"
+        >
+          <Plus size={12} />
+          הוסף קישור
+        </button>
       </div>
+
+      {showAdd && (
+        <div className="space-y-2 bg-bg/50 rounded-md p-2">
+          <input
+            type="url"
+            className="input text-xs"
+            placeholder="https://drive.google.com/... או https://docs.google.com/..."
+            value={url}
+            onChange={(e) => setUrl(e.target.value)}
+            dir="ltr"
+          />
+          <input
+            type="text"
+            className="input text-xs"
+            placeholder="שם להצגה (אופציונלי)"
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+          />
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={() => void addFile()}
+              disabled={adding || !url.trim()}
+              className="btn-primary text-xs disabled:opacity-50"
+            >
+              {adding ? <Loader2 size={12} className="animate-spin" /> : 'שמור'}
+            </button>
+            <button
+              type="button"
+              onClick={() => { setShowAdd(false); setUrl(''); setName(''); }}
+              className="btn-ghost text-xs"
+            >
+              בטל
+            </button>
+          </div>
+          <p className="text-[11px] text-muted">
+            ודא שהקובץ משותף ב"כל מי שיש לו את הקישור" כדי שהמודל יוכל לקרוא אותו.
+          </p>
+        </div>
+      )}
 
       {error && <div className="text-xs text-red-400">{error}</div>}
       {message && <div className="text-xs text-green-400">{message}</div>}
@@ -122,6 +183,17 @@ export function ProjectFiles({ scope, projectId, onTasksChange }: Props) {
             <li key={f.id} className="flex items-center gap-2 text-xs bg-bg/50 rounded-md px-2 py-1.5 group/file">
               <FileText size={12} className="text-muted shrink-0" />
               <span className="flex-1 truncate" dir="ltr">{f.file_name}</span>
+              {f.google_drive_url && (
+                <a
+                  href={f.google_drive_url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-muted hover:text-text"
+                  aria-label="פתח ב-Drive"
+                >
+                  <ExternalLink size={12} />
+                </a>
+              )}
               <button
                 type="button"
                 onClick={() => void extractTasks(f)}
