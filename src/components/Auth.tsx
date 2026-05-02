@@ -1,67 +1,56 @@
 import { useState, type FormEvent } from 'react';
-import { ArrowRight, Eye, EyeOff, KeyRound, Loader2, Mail } from 'lucide-react';
-import { supabase } from '../lib/supabase';
-import { cn } from '../lib/utils';
+import { Eye, EyeOff, KeyRound, Loader2, Unlock } from 'lucide-react';
+import { hasAppPassword, saveAppPassword, setAppUnlocked, verifyAppPassword } from '../lib/appPassword';
 
-type AuthMode = 'password' | 'code';
-type CodeStage = 'email' | 'code';
+interface Props {
+  onUnlocked: () => void;
+}
 
-export function Auth() {
-  const [mode, setMode] = useState<AuthMode>('password');
-  const [email, setEmail] = useState('');
+export function Auth({ onUnlocked }: Props) {
+  const isSetup = !hasAppPassword();
   const [password, setPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
-  const [code, setCode] = useState('');
-  const [codeStage, setCodeStage] = useState<CodeStage>('email');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const passwordsMatch = password === confirmPassword;
+  const canSubmit = isSetup
+    ? password.length >= 6 && confirmPassword.length >= 6 && passwordsMatch
+    : password.length > 0;
 
-  function switchMode(nextMode: AuthMode) {
-    setMode(nextMode);
-    setError(null);
-    setCode('');
-    setCodeStage('email');
-  }
-
-  async function signInWithPassword(e: FormEvent) {
+  async function submit(e: FormEvent) {
     e.preventDefault();
-    setLoading(true);
     setError(null);
-    const { error } = await supabase.auth.signInWithPassword({
-      email: email.trim(),
-      password,
-    });
-    setLoading(false);
-    if (error) setError(error.message);
-  }
 
-  async function sendCode(e: FormEvent) {
-    e.preventDefault();
-    setLoading(true);
-    setError(null);
-    const { error } = await supabase.auth.signInWithOtp({ email: email.trim() });
-    setLoading(false);
-    if (error) setError(error.message);
-    else setCodeStage('code');
-  }
+    if (isSetup && password.length < 6) {
+      setError('הסיסמה חייבת להכיל לפחות 6 תווים');
+      return;
+    }
+    if (isSetup && !passwordsMatch) {
+      setError('הסיסמאות לא זהות');
+      return;
+    }
 
-  async function verifyCode(e: FormEvent) {
-    e.preventDefault();
     setLoading(true);
-    setError(null);
-    const { error } = await supabase.auth.verifyOtp({
-      email: email.trim(),
-      token: code,
-      type: 'email',
-    });
-    setLoading(false);
-    if (error) setError(error.message);
-  }
+    try {
+      if (isSetup) {
+        await saveAppPassword(password);
+      } else {
+        const ok = await verifyAppPassword(password);
+        if (!ok) {
+          setError('סיסמה לא נכונה');
+          return;
+        }
+        setAppUnlocked(true);
+      }
 
-  function resetCode() {
-    setCodeStage('email');
-    setCode('');
-    setError(null);
+      onUnlocked();
+    } catch (err) {
+      setAppUnlocked(false);
+      setError(err instanceof Error ? err.message : 'לא הצלחתי להתחבר');
+    } finally {
+      setLoading(false);
+    }
   }
 
   return (
@@ -71,138 +60,76 @@ export function Auth() {
           <div className="text-4xl mb-2">🎯</div>
           <h1 className="text-xl font-semibold mb-1">ניהול פרויקטים</h1>
           <p className="text-sm text-muted">
-            {mode === 'password'
-              ? 'התחברות עם סיסמה'
-              : codeStage === 'email' ? 'שליחת קוד חד-פעמי' : 'הזן את הקוד שקיבלת במייל'}
+            {isSetup ? 'קבע סיסמה ראשונית לאפליקציה' : 'התחבר עם הסיסמה הקבועה'}
           </p>
         </div>
 
-        <div className="grid grid-cols-2 rounded-lg border border-border bg-bg p-1 mb-5">
-          <button
-            type="button"
-            onClick={() => switchMode('password')}
-            className={cn('btn rounded-md px-2 py-1.5 text-xs', mode === 'password' ? 'bg-accent text-white' : 'text-muted hover:text-text')}
-          >
-            <KeyRound size={14} />
-            סיסמה
-          </button>
-          <button
-            type="button"
-            onClick={() => switchMode('code')}
-            className={cn('btn rounded-md px-2 py-1.5 text-xs', mode === 'code' ? 'bg-accent text-white' : 'text-muted hover:text-text')}
-          >
-            <Mail size={14} />
-            קוד
-          </button>
-        </div>
+        <form onSubmit={submit} className="space-y-4" autoComplete="on">
+          <div>
+            <label htmlFor="app-password" className="block text-xs text-muted mb-1">
+              {isSetup ? 'סיסמה חדשה' : 'סיסמה'}
+            </label>
+            <div className="relative">
+              <input
+                id="app-password"
+                name={isSetup ? 'new-password' : 'password'}
+                type={showPassword ? 'text' : 'password'}
+                minLength={isSetup ? 6 : undefined}
+                className="input pl-10"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                required
+                autoFocus
+                dir="ltr"
+                autoComplete={isSetup ? 'new-password' : 'current-password'}
+              />
+              <button
+                type="button"
+                onClick={() => setShowPassword((value) => !value)}
+                className="absolute left-2 top-1/2 -translate-y-1/2 rounded-md p-1.5 text-muted hover:bg-surface hover:text-text"
+                aria-label={showPassword ? 'הסתר סיסמה' : 'הצג סיסמה'}
+              >
+                {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+              </button>
+            </div>
+          </div>
 
-        {mode === 'password' ? (
-          <form onSubmit={signInWithPassword} className="space-y-4" autoComplete="on">
+          {isSetup && (
             <div>
-              <label htmlFor="auth-email" className="block text-xs text-muted mb-1">כתובת אימייל</label>
+              <label htmlFor="app-password-confirm" className="block text-xs text-muted mb-1">אימות סיסמה</label>
               <input
-                id="auth-email"
-                name="email"
-                type="email"
+                id="app-password-confirm"
+                name="confirm-new-password"
+                type={showPassword ? 'text' : 'password'}
+                minLength={6}
                 className="input"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                placeholder="you@example.com"
+                value={confirmPassword}
+                onChange={(e) => setConfirmPassword(e.target.value)}
                 required
-                autoFocus
                 dir="ltr"
-                autoComplete="username"
+                autoComplete="new-password"
               />
             </div>
-            <div>
-              <label htmlFor="auth-password" className="block text-xs text-muted mb-1">סיסמה</label>
-              <div className="relative">
-                <input
-                  id="auth-password"
-                  name="password"
-                  type={showPassword ? 'text' : 'password'}
-                  className="input pl-10"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  required
-                  dir="ltr"
-                  autoComplete="current-password"
-                />
-                <button
-                  type="button"
-                  onClick={() => setShowPassword((value) => !value)}
-                  className="absolute left-2 top-1/2 -translate-y-1/2 rounded-md p-1.5 text-muted hover:bg-surface hover:text-text"
-                  aria-label={showPassword ? 'הסתר סיסמה' : 'הצג סיסמה'}
-                >
-                  {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
-                </button>
-              </div>
-            </div>
-            {error && <div className="text-xs text-red-400">{error}</div>}
-            <button type="submit" disabled={loading || !email.trim() || !password} className="btn-primary w-full disabled:opacity-50">
-              {loading ? <Loader2 className="animate-spin" size={16} /> : 'התחבר'}
-            </button>
-          </form>
-        ) : codeStage === 'email' ? (
-          <form onSubmit={sendCode} className="space-y-4">
-            <div>
-              <label htmlFor="otp-email" className="block text-xs text-muted mb-1">כתובת אימייל</label>
-              <input
-                id="otp-email"
-                name="email"
-                type="email"
-                className="input"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                placeholder="you@example.com"
-                required
-                autoFocus
-                dir="ltr"
-                autoComplete="username"
-              />
-            </div>
-            {error && <div className="text-xs text-red-400">{error}</div>}
-            <button type="submit" disabled={loading || !email.trim()} className="btn-primary w-full disabled:opacity-50">
-              {loading ? <Loader2 className="animate-spin" size={16} /> : <>שלח קוד <ArrowRight size={14} /></>}
-            </button>
-            <p className="text-xs text-muted text-center pt-2">
-              נשלח אליך קוד 6 ספרות במייל
-            </p>
-          </form>
-        ) : (
-          <form onSubmit={verifyCode} className="space-y-4">
-            <div className="flex items-center gap-2 text-sm text-muted bg-bg/50 rounded-lg p-3">
-              <Mail size={16} className="text-accent shrink-0" />
-              <span className="truncate" dir="ltr">{email}</span>
-            </div>
-            <div>
-              <label htmlFor="otp-code" className="block text-xs text-muted mb-1">קוד מהמייל</label>
-              <input
-                id="otp-code"
-                name="one-time-code"
-                type="text"
-                inputMode="numeric"
-                pattern="[0-9]*"
-                maxLength={6}
-                className="input text-center text-2xl tracking-[0.5em] font-mono"
-                value={code}
-                onChange={(e) => setCode(e.target.value.replace(/\D/g, ''))}
-                placeholder="000000"
-                required
-                autoFocus
-                dir="ltr"
-                autoComplete="one-time-code"
-              />
-            </div>
-            {error && <div className="text-xs text-red-400">{error}</div>}
-            <button type="submit" disabled={loading || code.length !== 6} className="btn-primary w-full disabled:opacity-50">
-              {loading ? <Loader2 className="animate-spin" size={16} /> : 'התחבר'}
-            </button>
-            <button type="button" onClick={resetCode} className="btn-ghost w-full text-xs">
-              שלח קוד מחדש / שנה כתובת
-            </button>
-          </form>
-        )}
+          )}
+
+          {error && <div className="text-xs text-red-400">{error}</div>}
+
+          <button type="submit" disabled={loading || !canSubmit} className="btn-primary w-full disabled:opacity-50">
+            {loading ? (
+              <Loader2 className="animate-spin" size={16} />
+            ) : isSetup ? (
+              <>
+                <KeyRound size={16} />
+                קבע סיסמה והיכנס
+              </>
+            ) : (
+              <>
+                <Unlock size={16} />
+                היכנס
+              </>
+            )}
+          </button>
+        </form>
       </div>
     </div>
   );
