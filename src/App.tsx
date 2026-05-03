@@ -101,7 +101,6 @@ function ScopeView({ scope, setScope, session }: ScopeViewProps) {
   const doneProjects    = useMemo(() => projects.filter(p => p.status === 'done'), [projects]);
   const frozenProjects  = useMemo(() => projects.filter(p => p.status === 'frozen'), [projects]);
 
-  const activeTasks       = useMemo(() => tasks.filter(t => t.status !== 'done'), [tasks]);
   const doneTasksWithProj = useMemo(() => tasks.filter(t => t.status === 'done' && t.project_id), [tasks]);
   const doneTasksOrphan   = useMemo(() => tasks.filter(t => t.status === 'done' && !t.project_id), [tasks]);
 
