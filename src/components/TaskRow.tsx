@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Check, Pencil, Sparkles, Trash2, NotebookPen } from 'lucide-react';
 import {
   type Task,
@@ -49,6 +49,10 @@ export function TaskRow({ task, project, projects, scope, onChange, isSelected, 
   const [notesDraft, setNotesDraft] = useState(task.notes ?? '');
   const [savingNotes, setSavingNotes] = useState(false);
   const [editingNotes, setEditingNotes] = useState(false);
+
+  useEffect(() => {
+    if (!isSelected) setEditingNotes(false);
+  }, [isSelected]);
   const activeDraft = draft.taskId === task.id && draft.savedStatus === task.status && draft.savedPriority === task.priority
     ? draft
     : {
@@ -128,11 +132,12 @@ export function TaskRow({ task, project, projects, scope, onChange, isSelected, 
           ? 'bg-purple-500/10 border-dashed border-purple-500/40 hover:border-purple-400/60'
           : isSelected ? 'border-accent/60' : 'hover:border-zinc-600'
       }`}
-      onClick={() => { onSelect?.(); setEditingNotes(false); }}
+      onClick={() => onSelect?.()}
     >
-      <div className="flex min-w-0 flex-1 items-center gap-3 sm:flex-row" onClick={e => e.stopPropagation()}>
+      <div className="flex min-w-0 flex-1 items-center gap-3 sm:flex-row">
         <input
           type="checkbox"
+          onClick={e => e.stopPropagation()}
           checked={draftStatus === 'done'}
           onChange={(e) => void toggleDone(e.target.checked)}
           disabled={savingChanges}
