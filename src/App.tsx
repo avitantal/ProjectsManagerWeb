@@ -134,11 +134,11 @@ function ScopeView({ scope, setScope, session }: ScopeViewProps) {
         <div className="flex justify-center mb-4">
           <div className="flex flex-wrap justify-center bg-surface rounded-lg p-1 border border-border gap-0.5">
             {([
-              { id: 'projects', icon: FolderKanban, label: 'פרויקטים' },
-              { id: 'orphans',  icon: ListTodo,    label: 'ללא פרויקט' },
-              { id: 'done',     icon: CheckCircle2, label: 'הושלמו', badge: doneTasks.length + doneProjects.length },
-              { id: 'frozen',   icon: Archive,      label: 'נגנזו',   badge: frozenProjects.length },
-            ] as const).map(({ id, icon: Icon, label, badge }) => (
+              { id: 'projects' as const, icon: FolderKanban, label: 'פרויקטים',   badge: 0 },
+              { id: 'orphans'  as const, icon: ListTodo,     label: 'ללא פרויקט', badge: 0 },
+              { id: 'done'     as const, icon: CheckCircle2, label: 'הושלמו',     badge: doneTasks.length + doneProjects.length },
+              { id: 'frozen'   as const, icon: Archive,      label: 'נגנזו',      badge: frozenProjects.length },
+            ]).map(({ id, icon: Icon, label, badge }) => (
               <button key={id}
                 onClick={() => setViewPersisted(id)}
                 className={cn('btn text-sm px-2.5 py-1.5 flex items-center gap-1', view === id ? 'bg-accent text-white' : 'text-muted hover:text-text')}
