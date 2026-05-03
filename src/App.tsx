@@ -22,7 +22,14 @@ function ScopeView({ scope, setScope, session }: ScopeViewProps) {
   const { tasks, refresh: refreshTasks } = useTasks(scope);
   const { counts: fileCounts, refresh: refreshFileCounts } = useFileCounts(scope);
   const [filterProjectId, setFilterProjectId] = useState<number | null>(null);
-  const [view, setView] = useState<'projects' | 'orphans'>('projects');
+  const [view, setView] = useState<'projects' | 'orphans'>(
+    () => (localStorage.getItem(`view:${scope}`) as 'projects' | 'orphans') ?? 'projects',
+  );
+
+  function setViewPersisted(v: 'projects' | 'orphans') {
+    localStorage.setItem(`view:${scope}`, v);
+    setView(v);
+  }
   const [showAdd, setShowAdd] = useState<null | 'project' | 'task'>(null);
   const [menuOpen, setMenuOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
@@ -71,7 +78,7 @@ function ScopeView({ scope, setScope, session }: ScopeViewProps) {
               title={session.user.email ?? ''}
             >
               🎯 ניהול פרויקטים
-              <span className="text-[10px] font-normal text-muted/70" dir="ltr">V1.04</span>
+              <span className="text-[10px] font-normal text-muted/70" dir="ltr">V1.05</span>
             </button>
             {menuOpen && (
               <div className="absolute top-full right-0 mt-1 min-w-[160px] card p-1 z-50 shadow-lg" role="menu">
@@ -116,13 +123,13 @@ function ScopeView({ scope, setScope, session }: ScopeViewProps) {
         <div className="flex justify-center mb-4">
           <div className="flex bg-surface rounded-lg p-1 border border-border">
             <button
-              onClick={() => setView('projects')}
+              onClick={() => setViewPersisted('projects')}
               className={cn('btn text-sm px-3 py-1.5', view === 'projects' ? 'bg-accent text-white' : 'text-muted hover:text-text')}
             >
               <FolderKanban size={14} /> פרויקטים
             </button>
             <button
-              onClick={() => setView('orphans')}
+              onClick={() => setViewPersisted('orphans')}
               className={cn('btn text-sm px-3 py-1.5', view === 'orphans' ? 'bg-accent text-white' : 'text-muted hover:text-text')}
             >
               <ListTodo size={14} /> ללא פרויקט
@@ -195,7 +202,14 @@ function ScopeView({ scope, setScope, session }: ScopeViewProps) {
 
 export default function App() {
   const { session, loading } = useAuth();
-  const [scope, setScope] = useState<Scope>('factory');
+  const [scope, setScope] = useState<Scope>(
+    () => (localStorage.getItem('scope') as Scope) ?? 'factory',
+  );
+
+  function setScopePersisted(s: Scope) {
+    localStorage.setItem('scope', s);
+    setScope(s);
+  }
 
   if (loading) {
     return <div className="min-h-screen flex items-center justify-center"><Loader2 className="animate-spin text-muted" size={24} /></div>;
@@ -204,7 +218,7 @@ export default function App() {
 
   return (
     <div className="min-h-screen">
-      <ScopeView key={scope} scope={scope} setScope={setScope} session={session} />
+      <ScopeView key={scope} scope={scope} setScope={setScopePersisted} session={session} />
     </div>
   );
 }
