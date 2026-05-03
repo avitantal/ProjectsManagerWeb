@@ -165,7 +165,7 @@ export function ProjectCard({ project, scope, progress, fileCount, onChange }: P
         )}
       </div>
 
-      <div className="mt-2 text-[10px] text-muted/50 flex flex-wrap gap-x-2">
+      <div className="mt-2 text-[10px] text-purple-400/70 flex flex-wrap gap-x-2">
         <span>נפתח {formatDateTime(project.created_at)}</span>
         {project.closed_at && <span>· נסגר {formatDateTime(project.closed_at)}</span>}
         <span>· ⏱ {formatLifetime(project.created_at, project.closed_at)}</span>

@@ -146,7 +146,7 @@ export function TaskRow({ task, project, projects, scope, onChange, isSelected, 
           {project && (
             <div className="text-xs text-muted mt-0.5 truncate">{project.name}</div>
           )}
-          <div className="text-[10px] text-muted/50 mt-0.5 flex flex-wrap gap-x-2">
+          <div className="text-[10px] text-purple-400/70 mt-0.5 flex flex-wrap gap-x-2">
             <span title={formatDateTime(task.created_at)}>נפתח {formatDateTime(task.created_at)}</span>
             {task.closed_at && <span title={formatDateTime(task.closed_at)}>· נסגר {formatDateTime(task.closed_at)}</span>}
             <span>· ⏱ {formatLifetime(task.created_at, task.closed_at)}</span>
