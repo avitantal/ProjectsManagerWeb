@@ -89,7 +89,7 @@ function ScopeView({ scope, setScope, session }: ScopeViewProps) {
               title={session.user.email ?? ''}
             >
               🎯 ניהול פרויקטים
-              <span className="text-[10px] font-normal text-muted/70" dir="ltr">V1.06</span>
+              <span className="text-[10px] font-normal text-muted/70" dir="ltr">V1.07</span>
             </button>
             {menuOpen && (
               <div className="absolute top-full right-0 mt-1 min-w-[160px] card p-1 z-50 shadow-lg" role="menu">
@@ -131,23 +131,34 @@ function ScopeView({ scope, setScope, session }: ScopeViewProps) {
       </header>
 
       <main className="max-w-7xl mx-auto px-4 py-6">
-        <div className="flex justify-center mb-4">
-          <div className="flex flex-wrap justify-center bg-surface rounded-lg p-1 border border-border gap-0.5">
+        <div className="flex flex-col items-center gap-2 mb-4">
+          <div className="flex bg-surface rounded-lg p-1 border border-border">
+            <button
+              onClick={() => setViewPersisted('projects')}
+              className={cn('btn text-sm px-3 py-1.5', view === 'projects' ? 'bg-accent text-white' : 'text-muted hover:text-text')}
+            >
+              <FolderKanban size={14} /> פרויקטים
+            </button>
+            <button
+              onClick={() => setViewPersisted('orphans')}
+              className={cn('btn text-sm px-3 py-1.5', view === 'orphans' ? 'bg-accent text-white' : 'text-muted hover:text-text')}
+            >
+              <ListTodo size={14} /> ללא פרויקט
+            </button>
+          </div>
+          <div className="flex items-center gap-3">
             {([
-              { id: 'projects' as const, icon: FolderKanban, label: 'פרויקטים',   badge: 0 },
-              { id: 'orphans'  as const, icon: ListTodo,     label: 'ללא פרויקט', badge: 0 },
-              { id: 'done'     as const, icon: CheckCircle2, label: 'הושלמו',     badge: doneTasks.length + doneProjects.length },
-              { id: 'frozen'   as const, icon: Archive,      label: 'נגנזו',      badge: frozenProjects.length },
+              { id: 'done'   as const, icon: CheckCircle2, label: 'הושלמו', badge: doneTasks.length + doneProjects.length },
+              { id: 'frozen' as const, icon: Archive,      label: 'נגנזו',  badge: frozenProjects.length },
             ]).map(({ id, icon: Icon, label, badge }) => (
               <button key={id}
                 onClick={() => setViewPersisted(id)}
-                className={cn('btn text-sm px-2.5 py-1.5 flex items-center gap-1', view === id ? 'bg-accent text-white' : 'text-muted hover:text-text')}
+                className={cn('flex items-center gap-1 text-xs transition-colors', view === id ? 'text-accent' : 'text-muted/60 hover:text-muted')}
               >
-                <Icon size={14} />
-                <span className="hidden sm:inline">{label}</span>
-                <span className="sm:hidden">{label}</span>
-                {badge !== undefined && badge > 0 && (
-                  <span className={cn('text-[10px] rounded-full px-1.5 py-0.5 font-semibold leading-none', view === id ? 'bg-white/20' : 'bg-accent/20 text-accent')}>{badge}</span>
+                <Icon size={12} />
+                {label}
+                {badge > 0 && (
+                  <span className={cn('text-[10px] rounded-full px-1.5 leading-5 font-semibold', view === id ? 'bg-accent/20 text-accent' : 'bg-surface text-muted')}>{badge}</span>
                 )}
               </button>
             ))}
