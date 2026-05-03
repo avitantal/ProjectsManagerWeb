@@ -70,6 +70,7 @@ function ScopeView({ scope, setScope, session }: ScopeViewProps) {
   const [selectedTaskId, setSelectedTaskId] = useState<number | null>(null);
   const [taskSort, setTaskSort]       = useState<TaskSort>('priority');
   const [projectSort, setProjectSort] = useState<ProjectSort>('priority');
+  const [hideDone, setHideDone] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
 
@@ -110,13 +111,15 @@ function ScopeView({ scope, setScope, session }: ScopeViewProps) {
     view === 'orphans' || view === 'orphans-done' ? [] :
     activeProjects;
 
-  const visibleTasks =
-    view === 'projects-done'   ? doneTasksWithProj :
-    view === 'projects-frozen' ? [] :
-    view === 'orphans-done'    ? doneTasksOrphan :
-    view === 'orphans'         ? activeTasks.filter(t => !t.project_id) :
-    filterProjectId !== null   ? activeTasks.filter(t => t.project_id === filterProjectId) :
-    activeTasks.filter(t => t.project_id);
+  const visibleTasks = (() => {
+    const hide = (arr: Task[]) => hideDone ? arr.filter(t => t.status !== 'done') : arr;
+    if (view === 'projects-done')   return doneTasksWithProj;
+    if (view === 'projects-frozen') return [];
+    if (view === 'orphans-done')    return doneTasksOrphan;
+    if (view === 'orphans')         return hide(tasks.filter(t => !t.project_id));
+    if (filterProjectId !== null)   return hide(tasks.filter(t => t.project_id === filterProjectId));
+    return hide(tasks.filter(t => t.project_id));
+  })();
 
   const sortedVisibleProjects = useMemo(() => sortedProjects(visibleProjects, projectSort), [visibleProjects, projectSort]);
   const sortedVisibleTasks    = useMemo(() => sortedTasks(visibleTasks, taskSort), [visibleTasks, taskSort]);
@@ -142,7 +145,7 @@ function ScopeView({ scope, setScope, session }: ScopeViewProps) {
               title={session.user.email ?? ''}
             >
               🎯 ניהול פרויקטים
-              <span className="text-[10px] font-normal text-muted/70" dir="ltr">V1.10</span>
+              <span className="text-[10px] font-normal text-muted/70" dir="ltr">V1.11</span>
             </button>
             {menuOpen && (
               <div className="absolute top-full right-0 mt-1 min-w-[160px] card p-1 z-50 shadow-lg" role="menu">
@@ -281,6 +284,14 @@ function ScopeView({ scope, setScope, session }: ScopeViewProps) {
                       <h2 className="text-lg font-semibold">{tasksHeading}</h2>
                       {view === 'projects' && filterProjectId !== null && (
                         <button onClick={() => setFilterProjectId(null)} className="text-xs text-accent hover:underline">ניקוי סינון</button>
+                      )}
+                      {isActive && (
+                        <button
+                          onClick={() => setHideDone(h => !h)}
+                          className={cn('text-xs transition-colors', hideDone ? 'text-accent' : 'text-muted/60 hover:text-muted')}
+                        >
+                          {hideDone ? '✓ מסתיר שהסתיימו' : 'הסתר שהסתיימו'}
+                        </button>
                       )}
                     </div>
                     <div className="flex items-center gap-2">
