@@ -59,6 +59,20 @@ export function TaskRow({ task, project, projects, scope, onChange }: Props) {
   const overdue = days !== null && days < 0 && draftStatus !== 'done';
   const hasChanges = draftStatus !== task.status || draftPriority !== task.priority;
 
+  async function toggleDone(checked: boolean) {
+    setSavingChanges(true);
+    try {
+      const newStatus: TaskStatus = checked ? 'done' : 'todo';
+      const update: Record<string, unknown> = { status: newStatus };
+      if (checked && task.status !== 'done') update.closed_at = new Date().toISOString();
+      else if (!checked && task.status === 'done') update.closed_at = null;
+      await supabase.from(`${scope}_tasks`).update(update).eq('id', task.id);
+      onChange();
+    } finally {
+      setSavingChanges(false);
+    }
+  }
+
   async function saveChanges() {
     setSavingChanges(true);
     try {
@@ -103,7 +117,7 @@ export function TaskRow({ task, project, projects, scope, onChange }: Props) {
         <input
           type="checkbox"
           checked={draftStatus === 'done'}
-          onChange={(e) => updateDraft({ status: e.target.checked ? 'done' : 'todo' })}
+          onChange={(e) => void toggleDone(e.target.checked)}
           disabled={savingChanges}
           className="w-4 h-4 accent-accent shrink-0"
           aria-label="סמן כהושלם"
