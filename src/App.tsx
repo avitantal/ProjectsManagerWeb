@@ -21,7 +21,7 @@ function ScopeView({ scope, setScope, session }: ScopeViewProps) {
   const { projects, refresh: refreshProjects } = useProjects(scope);
   const { tasks, refresh: refreshTasks } = useTasks(scope);
   const { counts: fileCounts, refresh: refreshFileCounts } = useFileCounts(scope);
-  type View = 'projects' | 'orphans' | 'done' | 'frozen';
+  type View = 'projects' | 'projects-done' | 'projects-frozen' | 'orphans' | 'orphans-done';
   const [filterProjectId, setFilterProjectId] = useState<number | null>(null);
   const [view, setView] = useState<View>(
     () => (localStorage.getItem(`view:${scope}`) as View) ?? 'projects',
@@ -59,20 +59,27 @@ function ScopeView({ scope, setScope, session }: ScopeViewProps) {
     return m;
   }, [tasks]);
 
-  const activeProjects = useMemo(() => projects.filter(p => p.status !== 'done' && p.status !== 'frozen'), [projects]);
-  const doneProjects   = useMemo(() => projects.filter(p => p.status === 'done'), [projects]);
-  const frozenProjects = useMemo(() => projects.filter(p => p.status === 'frozen'), [projects]);
+  const activeProjects  = useMemo(() => projects.filter(p => p.status !== 'done' && p.status !== 'frozen'), [projects]);
+  const doneProjects    = useMemo(() => projects.filter(p => p.status === 'done'), [projects]);
+  const frozenProjects  = useMemo(() => projects.filter(p => p.status === 'frozen'), [projects]);
 
-  const activeTasks = useMemo(() => tasks.filter(t => t.status !== 'done'), [tasks]);
-  const doneTasks   = useMemo(() => tasks.filter(t => t.status === 'done'), [tasks]);
+  const activeTasks       = useMemo(() => tasks.filter(t => t.status !== 'done'), [tasks]);
+  const doneTasksWithProj = useMemo(() => tasks.filter(t => t.status === 'done' && t.project_id), [tasks]);
+  const doneTasksOrphan   = useMemo(() => tasks.filter(t => t.status === 'done' && !t.project_id), [tasks]);
 
-  const visibleProjects = view === 'done' ? doneProjects : view === 'frozen' ? frozenProjects : activeProjects;
+  const visibleProjects =
+    view === 'projects-done'   ? doneProjects :
+    view === 'projects-frozen' ? frozenProjects :
+    view === 'orphans' || view === 'orphans-done' ? [] :
+    activeProjects;
+
   const visibleTasks =
-    view === 'done'    ? doneTasks :
-    view === 'frozen'  ? [] :
-    view === 'orphans' ? activeTasks.filter(t => !t.project_id) :
-    filterProjectId !== null ? activeTasks.filter(t => t.project_id === filterProjectId) :
-    activeTasks;
+    view === 'projects-done'   ? doneTasksWithProj :
+    view === 'projects-frozen' ? [] :
+    view === 'orphans-done'    ? doneTasksOrphan :
+    view === 'orphans'         ? activeTasks.filter(t => !t.project_id) :
+    filterProjectId !== null   ? activeTasks.filter(t => t.project_id === filterProjectId) :
+    activeTasks.filter(t => t.project_id);
 
   const projectsById = useMemo(() => new Map(projects.map(p => [p.id, p])), [projects]);
 
@@ -89,7 +96,7 @@ function ScopeView({ scope, setScope, session }: ScopeViewProps) {
               title={session.user.email ?? ''}
             >
               🎯 ניהול פרויקטים
-              <span className="text-[10px] font-normal text-muted/70" dir="ltr">V1.07</span>
+              <span className="text-[10px] font-normal text-muted/70" dir="ltr">V1.08</span>
             </button>
             {menuOpen && (
               <div className="absolute top-full right-0 mt-1 min-w-[160px] card p-1 z-50 shadow-lg" role="menu">
@@ -131,46 +138,56 @@ function ScopeView({ scope, setScope, session }: ScopeViewProps) {
       </header>
 
       <main className="max-w-7xl mx-auto px-4 py-6">
-        <div className="flex flex-col items-center gap-2 mb-4">
+        <div className="flex flex-col items-center gap-1.5 mb-4">
           <div className="flex bg-surface rounded-lg p-1 border border-border">
             <button
               onClick={() => setViewPersisted('projects')}
-              className={cn('btn text-sm px-3 py-1.5', view === 'projects' ? 'bg-accent text-white' : 'text-muted hover:text-text')}
+              className={cn('btn text-sm px-3 py-1.5', ['projects','projects-done','projects-frozen'].includes(view) ? 'bg-accent text-white' : 'text-muted hover:text-text')}
             >
               <FolderKanban size={14} /> פרויקטים
             </button>
             <button
               onClick={() => setViewPersisted('orphans')}
-              className={cn('btn text-sm px-3 py-1.5', view === 'orphans' ? 'bg-accent text-white' : 'text-muted hover:text-text')}
+              className={cn('btn text-sm px-3 py-1.5', ['orphans','orphans-done'].includes(view) ? 'bg-accent text-white' : 'text-muted hover:text-text')}
             >
               <ListTodo size={14} /> ללא פרויקט
             </button>
           </div>
-          <div className="flex items-center gap-3">
-            {([
-              { id: 'done'   as const, icon: CheckCircle2, label: 'הושלמו', badge: doneTasks.length + doneProjects.length },
-              { id: 'frozen' as const, icon: Archive,      label: 'נגנזו',  badge: frozenProjects.length },
-            ]).map(({ id, icon: Icon, label, badge }) => (
-              <button key={id}
-                onClick={() => setViewPersisted(id)}
-                className={cn('flex items-center gap-1 text-xs transition-colors', view === id ? 'text-accent' : 'text-muted/60 hover:text-muted')}
+
+          {/* secondary links — context-sensitive */}
+          {['projects','projects-done','projects-frozen'].includes(view) && (
+            <div className="flex items-center gap-3">
+              {([
+                { id: 'projects-done'   as const, icon: CheckCircle2, label: 'הושלמו', badge: doneProjects.length + doneTasksWithProj.length },
+                { id: 'projects-frozen' as const, icon: Archive,      label: 'נגנזו',  badge: frozenProjects.length },
+              ]).map(({ id, icon: Icon, label, badge }) => (
+                <button key={id} onClick={() => setViewPersisted(id)}
+                  className={cn('flex items-center gap-1 text-xs transition-colors', view === id ? 'text-accent' : 'text-muted/60 hover:text-muted')}
+                >
+                  <Icon size={12} /> {label}
+                  {badge > 0 && <span className={cn('text-[10px] rounded-full px-1.5 leading-5 font-semibold', view === id ? 'bg-accent/20 text-accent' : 'bg-surface text-muted')}>{badge}</span>}
+                </button>
+              ))}
+            </div>
+          )}
+          {['orphans','orphans-done'].includes(view) && (
+            <div className="flex items-center gap-3">
+              <button onClick={() => setViewPersisted('orphans-done')}
+                className={cn('flex items-center gap-1 text-xs transition-colors', view === 'orphans-done' ? 'text-accent' : 'text-muted/60 hover:text-muted')}
               >
-                <Icon size={12} />
-                {label}
-                {badge > 0 && (
-                  <span className={cn('text-[10px] rounded-full px-1.5 leading-5 font-semibold', view === id ? 'bg-accent/20 text-accent' : 'bg-surface text-muted')}>{badge}</span>
-                )}
+                <CheckCircle2 size={12} /> הושלמו
+                {doneTasksOrphan.length > 0 && <span className={cn('text-[10px] rounded-full px-1.5 leading-5 font-semibold', view === 'orphans-done' ? 'bg-accent/20 text-accent' : 'bg-surface text-muted')}>{doneTasksOrphan.length}</span>}
               </button>
-            ))}
-          </div>
+            </div>
+          )}
         </div>
 
         {(() => {
           const isActive = view === 'projects' || view === 'orphans';
-          const showProjectsCol = view === 'projects' || view === 'done' || view === 'frozen';
-          const showTasksCol = view !== 'frozen';
-          const projectsHeading = view === 'done' ? 'פרויקטים שהושלמו' : view === 'frozen' ? 'פרויקטים נגנזים' : 'פרויקטים';
-          const tasksHeading = view === 'done' ? 'משימות שהושלמו' : 'משימות';
+          const showProjectsCol = ['projects','projects-done','projects-frozen'].includes(view);
+          const showTasksCol = view !== 'projects-frozen';
+          const projectsHeading = view === 'projects-done' ? 'פרויקטים שהושלמו' : view === 'projects-frozen' ? 'פרויקטים נגנזים' : 'פרויקטים';
+          const tasksHeading = view === 'projects-done' || view === 'orphans-done' ? 'משימות שהושלמו' : 'משימות';
 
           return (
             <div className={cn('grid grid-cols-1 gap-6', showProjectsCol && showTasksCol && 'lg:grid-cols-[1fr,1.5fr]')}>
@@ -234,7 +251,7 @@ function ScopeView({ scope, setScope, session }: ScopeViewProps) {
           scope={scope}
           type={showAdd}
           projects={projects}
-          defaultProjectId={view === 'orphans' || view === 'done' ? null : (filterProjectId ?? undefined)}
+          defaultProjectId={view === 'orphans' || view === 'orphans-done' ? null : (filterProjectId ?? undefined)}
           onClose={() => setShowAdd(null)}
           onSaved={refreshAll}
         />
