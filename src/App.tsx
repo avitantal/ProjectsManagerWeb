@@ -1,6 +1,6 @@
 import { useState, useMemo, useEffect, useRef } from 'react';
 import type { Session } from '@supabase/supabase-js';
-import { Plus, RefreshCw, Factory, House, Lightbulb, LogOut, Loader2, FolderKanban, ListTodo, CheckCircle2, Archive, X } from 'lucide-react';
+import { Plus, RefreshCw, Factory, House, LogOut, Loader2, FolderKanban, ListTodo, CheckCircle2, Archive, X } from 'lucide-react';
 import { useProjects, useTasks, useFileCounts } from './hooks/useData';
 import { useAuth } from './hooks/useAuth';
 import { supabase, type Scope, type Task, type Project } from './lib/supabase';
@@ -183,12 +183,6 @@ function ScopeView({ scope, setScope, session }: ScopeViewProps) {
               className={cn('btn text-sm px-3 py-1.5', scope === 'personal' ? 'bg-accent text-white' : 'text-muted hover:text-text')}
             >
               <House size={14} /> אישי
-            </button>
-            <button
-              onClick={() => setScope('ideas')}
-              className={cn('btn text-sm px-3 py-1.5', scope === 'ideas' ? 'bg-accent text-white' : 'text-muted hover:text-text')}
-            >
-              <Lightbulb size={14} /> רעיונות
             </button>
           </div>
         </div>

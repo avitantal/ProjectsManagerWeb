@@ -5,7 +5,7 @@ export const supabase = createClient(
   import.meta.env.VITE_SUPABASE_KEY,
 );
 
-export type Scope = 'factory' | 'personal' | 'ideas';
+export type Scope = 'factory' | 'personal';
 
 export type ProjectStatus = 'idea' | 'planned' | 'in_progress' | 'done' | 'frozen';
 export type Priority = 'high' | 'medium' | 'low';
