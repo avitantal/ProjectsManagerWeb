@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Check, Pencil, Sparkles, Trash2 } from 'lucide-react';
+import { Check, Pencil, Sparkles, Trash2, NotebookPen } from 'lucide-react';
 import {
   type Task,
   type TaskStatus,
@@ -48,6 +48,7 @@ export function TaskRow({ task, project, projects, scope, onChange, isSelected, 
   const [confirmingDeleteId, setConfirmingDeleteId] = useState<number | null>(null);
   const [notesDraft, setNotesDraft] = useState(task.notes ?? '');
   const [savingNotes, setSavingNotes] = useState(false);
+  const [editingNotes, setEditingNotes] = useState(false);
   const activeDraft = draft.taskId === task.id && draft.savedStatus === task.status && draft.savedPriority === task.priority
     ? draft
     : {
@@ -127,7 +128,7 @@ export function TaskRow({ task, project, projects, scope, onChange, isSelected, 
           ? 'bg-purple-500/10 border-dashed border-purple-500/40 hover:border-purple-400/60'
           : isSelected ? 'border-accent/60' : 'hover:border-zinc-600'
       }`}
-      onClick={() => onSelect?.()}
+      onClick={() => { onSelect?.(); setEditingNotes(false); }}
     >
       <div className="flex min-w-0 flex-1 items-center gap-3 sm:flex-row" onClick={e => e.stopPropagation()}>
         <input
@@ -146,6 +147,7 @@ export function TaskRow({ task, project, projects, scope, onChange, isSelected, 
             {suggested && <Sparkles size={12} className="text-purple-400 shrink-0" />}
             <span className="truncate">{task.name}</span>
             {suggested && <span className="chip bg-purple-500/20 text-purple-300 text-[10px] shrink-0">מוצע ע״י AI</span>}
+            {task.notes && !isSelected && <NotebookPen size={11} className="text-muted/50 shrink-0" />}
           </div>
           <div className="text-[10px] text-purple-400/70 mt-0.5 flex flex-wrap gap-x-2">
             <span title={formatDateTime(task.created_at)}>נפתח {formatDateTime(task.created_at)}</span>
@@ -231,16 +233,31 @@ export function TaskRow({ task, project, projects, scope, onChange, isSelected, 
 
       {isSelected && (
         <div className="pt-2 border-t border-border/50" onClick={e => e.stopPropagation()}>
-          <textarea
-            className="input w-full min-h-[72px] text-sm resize-none"
-            placeholder="הוסף הערות..."
-            value={notesDraft}
-            onChange={e => setNotesDraft(e.target.value)}
-            onBlur={() => void saveNotes()}
-            autoFocus
-            dir="rtl"
-          />
-          {savingNotes && <span className="text-[10px] text-muted mt-1">שומר...</span>}
+          {editingNotes || !task.notes ? (
+            <>
+              <textarea
+                className="input w-full min-h-[72px] text-sm resize-none"
+                placeholder="הוסף הערות..."
+                value={notesDraft}
+                onChange={e => setNotesDraft(e.target.value)}
+                onBlur={() => { void saveNotes(); setEditingNotes(false); }}
+                autoFocus
+                dir="rtl"
+              />
+              {savingNotes && <span className="text-[10px] text-muted">שומר...</span>}
+            </>
+          ) : (
+            <div className="flex items-start justify-between gap-2">
+              <p className="text-sm text-text/80 whitespace-pre-wrap leading-relaxed flex-1" dir="rtl">{task.notes}</p>
+              <button
+                onClick={() => setEditingNotes(true)}
+                className="text-muted hover:text-accent shrink-0 mt-0.5"
+                aria-label="ערוך הערות"
+              >
+                <Pencil size={13} />
+              </button>
+            </div>
+          )}
         </div>
       )}
 

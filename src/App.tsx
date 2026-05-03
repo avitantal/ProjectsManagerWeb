@@ -150,7 +150,7 @@ function ScopeView({ scope, setScope, session }: ScopeViewProps) {
               title={session.user.email ?? ''}
             >
               🎯 ניהול פרויקטים
-              <span className="text-[10px] font-normal text-muted/70" dir="ltr">V1.12</span>
+              <span className="text-[10px] font-normal text-muted/70" dir="ltr">V1.13</span>
             </button>
             {menuOpen && (
               <div className="absolute top-full right-0 mt-1 min-w-[160px] card p-1 z-50 shadow-lg" role="menu">
