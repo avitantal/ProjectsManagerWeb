@@ -89,7 +89,7 @@ export function ProjectCard({ project, scope, progress, fileCount, onChange, all
         {confirmingDelete ? (
           <div className="flex items-center gap-1 shrink-0" onClick={(e) => e.stopPropagation()}>
             <button type="button" onClick={() => void remove()} className="rounded-md bg-red-500/20 px-2 py-1 text-xs text-red-200 hover:bg-red-500/30">
-              {allowPermDelete ? 'מחק לצמיתות' : 'גנוז'}
+              {allowPermDelete ? 'מחק לצמיתות' : 'מחק'}
             </button>
             <button type="button" onClick={() => setConfirmingDeleteId(null)} className="rounded-md px-2 py-1 text-xs text-muted hover:bg-surface hover:text-text">
               בטל

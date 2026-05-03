@@ -55,7 +55,7 @@ export const PROJECT_STATUS_HE: Record<ProjectStatus, string> = {
   planned: 'מתוכנן',
   in_progress: 'בעבודה',
   done: 'הושלם',
-  frozen: 'גנוז',
+  frozen: 'מחוק',
 };
 
 export const PRIORITY_HE: Record<Priority, string> = {

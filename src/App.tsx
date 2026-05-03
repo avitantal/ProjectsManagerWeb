@@ -213,7 +213,7 @@ function ScopeView({ scope, setScope, session }: ScopeViewProps) {
             <div className="flex items-center gap-3">
               {([
                 { id: 'projects-done'   as const, icon: CheckCircle2, label: 'הושלמו', badge: doneProjects.length + doneTasksWithProj.length },
-                { id: 'projects-frozen' as const, icon: Archive,      label: 'נגנזו',  badge: frozenProjects.length },
+                { id: 'projects-frozen' as const, icon: Archive,      label: 'מחוקים', badge: frozenProjects.length },
               ]).map(({ id, icon: Icon, label, badge }) => (
                 <button key={id} onClick={() => setViewPersisted(id)}
                   className={cn('flex items-center gap-1 text-xs transition-colors', view === id ? 'text-accent' : 'text-muted/60 hover:text-muted')}
@@ -240,7 +240,7 @@ function ScopeView({ scope, setScope, session }: ScopeViewProps) {
           const isActive = view === 'projects' || view === 'orphans';
           const showProjectsCol = ['projects','projects-done','projects-frozen'].includes(view);
           const showTasksCol = view !== 'projects-frozen';
-          const projectsHeading = view === 'projects-done' ? 'פרויקטים שהושלמו' : view === 'projects-frozen' ? 'פרויקטים נגנזים' : 'פרויקטים';
+          const projectsHeading = view === 'projects-done' ? 'פרויקטים שהושלמו' : view === 'projects-frozen' ? 'פרויקטים מחוקים' : 'פרויקטים';
           const tasksHeading = view === 'projects-done' || view === 'orphans-done' ? 'משימות שהושלמו' : 'משימות';
 
           return (
