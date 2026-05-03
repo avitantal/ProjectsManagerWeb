@@ -12,7 +12,7 @@ import {
   supabase,
   type Scope,
 } from '../lib/supabase';
-import { formatDate, daysUntil } from '../lib/utils';
+import { formatDate, formatDateTime, formatLifetime, daysUntil } from '../lib/utils';
 import { InlineChangeActions } from './InlineChangeActions';
 
 interface StatusDraft {
@@ -57,7 +57,10 @@ export function ProjectCard({ project, scope, progress, fileCount, onChange }: P
   async function saveStatus() {
     setSavingStatus(true);
     try {
-      await supabase.from(`${scope}_projects`).update({ status: draftStatus }).eq('id', project.id);
+      const update: Record<string, unknown> = { status: draftStatus };
+      if (draftStatus === 'done' && project.status !== 'done') update.closed_at = new Date().toISOString();
+      else if (draftStatus !== 'done' && project.status === 'done') update.closed_at = null;
+      await supabase.from(`${scope}_projects`).update(update).eq('id', project.id);
       onChange();
     } finally {
       setSavingStatus(false);
@@ -160,6 +163,12 @@ export function ProjectCard({ project, scope, progress, fileCount, onChange }: P
             )}
           </span>
         )}
+      </div>
+
+      <div className="mt-2 text-[10px] text-muted/50 flex flex-wrap gap-x-2">
+        <span>נפתח {formatDateTime(project.created_at)}</span>
+        {project.closed_at && <span>· נסגר {formatDateTime(project.closed_at)}</span>}
+        <span>· ⏱ {formatLifetime(project.created_at, project.closed_at)}</span>
       </div>
 
       {fileCount > 0 && (

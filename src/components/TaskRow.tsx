@@ -12,7 +12,7 @@ import {
   TASK_PRIORITY_HE,
   TASK_PRIORITY_COLOR,
 } from '../lib/supabase';
-import { formatDate, daysUntil } from '../lib/utils';
+import { formatDate, formatDateTime, formatLifetime, daysUntil } from '../lib/utils';
 import { InlineChangeActions } from './InlineChangeActions';
 import { AddDialog } from './AddDialog';
 
@@ -62,10 +62,10 @@ export function TaskRow({ task, project, projects, scope, onChange }: Props) {
   async function saveChanges() {
     setSavingChanges(true);
     try {
-      await supabase
-        .from(`${scope}_tasks`)
-        .update({ status: draftStatus, priority: draftPriority })
-        .eq('id', task.id);
+      const update: Record<string, unknown> = { status: draftStatus, priority: draftPriority };
+      if (draftStatus === 'done' && task.status !== 'done') update.closed_at = new Date().toISOString();
+      else if (draftStatus !== 'done' && task.status === 'done') update.closed_at = null;
+      await supabase.from(`${scope}_tasks`).update(update).eq('id', task.id);
       onChange();
     } finally {
       setSavingChanges(false);
@@ -117,6 +117,11 @@ export function TaskRow({ task, project, projects, scope, onChange }: Props) {
           {project && (
             <div className="text-xs text-muted mt-0.5 truncate">{project.name}</div>
           )}
+          <div className="text-[10px] text-muted/50 mt-0.5 flex flex-wrap gap-x-2">
+            <span title={formatDateTime(task.created_at)}>נפתח {formatDateTime(task.created_at)}</span>
+            {task.closed_at && <span title={formatDateTime(task.closed_at)}>· נסגר {formatDateTime(task.closed_at)}</span>}
+            <span>· ⏱ {formatLifetime(task.created_at, task.closed_at)}</span>
+          </div>
         </div>
       </div>
       <div className="flex flex-wrap items-center justify-end gap-2 shrink-0">

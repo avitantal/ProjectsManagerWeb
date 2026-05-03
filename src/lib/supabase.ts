@@ -21,6 +21,7 @@ export interface Project {
   description: string | null;
   created_at: string;
   updated_at: string;
+  closed_at: string | null;
 }
 
 export interface Task {
@@ -34,6 +35,7 @@ export interface Task {
   is_suggested: boolean;
   created_at: string;
   updated_at: string;
+  closed_at: string | null;
 }
 
 export interface ProjectFile {

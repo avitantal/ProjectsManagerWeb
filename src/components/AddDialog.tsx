@@ -45,8 +45,24 @@ export function AddDialog({ scope, type, projects, defaultProjectId, editing, on
       priority,
       due_date: dueDate || null,
     };
-    if (type === 'project') payload.description = text || null;
-    else { payload.notes = text || null; payload.project_id = projectId ?? null; }
+    if (type === 'project') {
+      payload.description = text || null;
+      if (editMode && editingProject) {
+        if (status === 'done' && editingProject.status !== 'done') payload.closed_at = new Date().toISOString();
+        else if (status !== 'done' && editingProject.status === 'done') payload.closed_at = null;
+      } else if (!editMode && status === 'done') {
+        payload.closed_at = new Date().toISOString();
+      }
+    } else {
+      payload.notes = text || null;
+      payload.project_id = projectId ?? null;
+      if (editMode && editingTask) {
+        if (status === 'done' && editingTask.status !== 'done') payload.closed_at = new Date().toISOString();
+        else if (status !== 'done' && editingTask.status === 'done') payload.closed_at = null;
+      } else if (!editMode && status === 'done') {
+        payload.closed_at = new Date().toISOString();
+      }
+    }
 
     if (editMode && editing) {
       payload.updated_at = new Date().toISOString();
