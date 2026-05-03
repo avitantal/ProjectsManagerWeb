@@ -30,9 +30,11 @@ interface Props {
   projects: Project[];
   scope: Scope;
   onChange: () => void;
+  isSelected?: boolean;
+  onSelect?: () => void;
 }
 
-export function TaskRow({ task, project, projects, scope, onChange }: Props) {
+export function TaskRow({ task, project, projects, scope, onChange, isSelected, onSelect }: Props) {
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState<TaskDraft>(() => ({
     taskId: task.id,
@@ -43,6 +45,8 @@ export function TaskRow({ task, project, projects, scope, onChange }: Props) {
   }));
   const [savingChanges, setSavingChanges] = useState(false);
   const [confirmingDeleteId, setConfirmingDeleteId] = useState<number | null>(null);
+  const [notesDraft, setNotesDraft] = useState(task.notes ?? '');
+  const [savingNotes, setSavingNotes] = useState(false);
   const activeDraft = draft.taskId === task.id && draft.savedStatus === task.status && draft.savedPriority === task.priority
     ? draft
     : {
@@ -92,6 +96,14 @@ export function TaskRow({ task, project, projects, scope, onChange }: Props) {
     onChange();
   }
 
+  async function saveNotes() {
+    if (notesDraft === (task.notes ?? '')) return;
+    setSavingNotes(true);
+    await supabase.from(`${scope}_tasks`).update({ notes: notesDraft || null }).eq('id', task.id);
+    setSavingNotes(false);
+    onChange();
+  }
+
   async function approveSuggested() {
     await supabase.from(`${scope}_tasks`).update({ is_suggested: false }).eq('id', task.id);
     onChange();
@@ -108,12 +120,15 @@ export function TaskRow({ task, project, projects, scope, onChange }: Props) {
   const suggested = task.is_suggested;
 
   return (
-    <div className={`card p-3 transition-colors group flex flex-col gap-3 sm:flex-row sm:items-center ${
-      suggested
-        ? 'bg-purple-500/10 border-dashed border-purple-500/40 hover:border-purple-400/60'
-        : 'hover:border-zinc-600'
-    }`}>
-      <div className="flex min-w-0 flex-1 items-center gap-3">
+    <div
+      className={`card p-3 transition-colors group flex flex-col gap-2 ${
+        suggested
+          ? 'bg-purple-500/10 border-dashed border-purple-500/40 hover:border-purple-400/60'
+          : isSelected ? 'border-accent/60' : 'hover:border-zinc-600'
+      }`}
+      onClick={() => onSelect?.()}
+    >
+      <div className="flex min-w-0 flex-1 items-center gap-3 sm:flex-row" onClick={e => e.stopPropagation()}>
         <input
           type="checkbox"
           checked={draftStatus === 'done'}
@@ -138,7 +153,7 @@ export function TaskRow({ task, project, projects, scope, onChange }: Props) {
           </div>
         </div>
       </div>
-      <div className="flex flex-wrap items-center justify-end gap-2 shrink-0">
+      <div className="flex flex-wrap items-center justify-end gap-2 shrink-0" onClick={e => e.stopPropagation()}>
         {task.due_date && (
           <span className={`text-xs ${overdue ? 'text-red-400' : 'text-muted'}`}>{formatDate(task.due_date)}</span>
         )}
@@ -210,6 +225,21 @@ export function TaskRow({ task, project, projects, scope, onChange }: Props) {
           </div>
         )}
       </div>
+
+      {isSelected && (
+        <div className="pt-2 border-t border-border/50" onClick={e => e.stopPropagation()}>
+          <textarea
+            className="input w-full min-h-[72px] text-sm resize-none"
+            placeholder="הוסף הערות..."
+            value={notesDraft}
+            onChange={e => setNotesDraft(e.target.value)}
+            onBlur={() => void saveNotes()}
+            autoFocus
+            dir="rtl"
+          />
+          {savingNotes && <span className="text-[10px] text-muted mt-1">שומר...</span>}
+        </div>
+      )}
 
       {editing && (
         <AddDialog

@@ -1,15 +1,49 @@
 import { useState, useMemo, useEffect, useRef } from 'react';
 import type { Session } from '@supabase/supabase-js';
-import { Plus, RefreshCw, Factory, House, LogOut, Loader2, FolderKanban, ListTodo, CheckCircle2, Archive } from 'lucide-react';
+import { Plus, RefreshCw, Factory, House, LogOut, Loader2, FolderKanban, ListTodo, CheckCircle2, Archive, ArrowUpDown } from 'lucide-react';
 import { useProjects, useTasks, useFileCounts } from './hooks/useData';
 import { useAuth } from './hooks/useAuth';
-import { supabase, type Scope } from './lib/supabase';
+import { supabase, type Scope, type Task, type Project } from './lib/supabase';
 import { Stats } from './components/Stats';
 import { ProjectCard } from './components/ProjectCard';
 import { TaskRow } from './components/TaskRow';
 import { AddDialog } from './components/AddDialog';
+import { ProjectTimeline } from './components/ProjectTimeline';
 import { Auth } from './components/Auth';
 import { cn } from './lib/utils';
+
+type TaskSort    = 'priority' | 'newest' | 'oldest' | 'due_asc';
+type ProjectSort = 'priority' | 'newest' | 'oldest' | 'due_asc';
+
+function sortedTasks(tasks: Task[], sort: TaskSort) {
+  return [...tasks].sort((a, b) => {
+    if (sort === 'newest') return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
+    if (sort === 'oldest') return new Date(a.created_at).getTime() - new Date(b.created_at).getTime();
+    if (sort === 'due_asc') {
+      if (!a.due_date && !b.due_date) return 0;
+      if (!a.due_date) return 1;
+      if (!b.due_date) return -1;
+      return a.due_date.localeCompare(b.due_date);
+    }
+    const order: Record<string, number> = { urgent: 0, high: 1, normal: 2, low: 3 };
+    return (order[a.priority] ?? 2) - (order[b.priority] ?? 2);
+  });
+}
+
+function sortedProjects(projects: Project[], sort: ProjectSort) {
+  return [...projects].sort((a, b) => {
+    if (sort === 'newest') return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
+    if (sort === 'oldest') return new Date(a.created_at).getTime() - new Date(b.created_at).getTime();
+    if (sort === 'due_asc') {
+      if (!a.due_date && !b.due_date) return 0;
+      if (!a.due_date) return 1;
+      if (!b.due_date) return -1;
+      return a.due_date.localeCompare(b.due_date);
+    }
+    const order: Record<string, number> = { high: 0, medium: 1, low: 2 };
+    return (order[a.priority] ?? 1) - (order[b.priority] ?? 1);
+  });
+}
 
 interface ScopeViewProps {
   scope: Scope;
@@ -33,6 +67,9 @@ function ScopeView({ scope, setScope, session }: ScopeViewProps) {
     setFilterProjectId(null);
   }
   const [showAdd, setShowAdd] = useState<null | 'project' | 'task'>(null);
+  const [selectedTaskId, setSelectedTaskId] = useState<number | null>(null);
+  const [taskSort, setTaskSort]       = useState<TaskSort>('priority');
+  const [projectSort, setProjectSort] = useState<ProjectSort>('priority');
   const [menuOpen, setMenuOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
 
@@ -81,7 +118,16 @@ function ScopeView({ scope, setScope, session }: ScopeViewProps) {
     filterProjectId !== null   ? activeTasks.filter(t => t.project_id === filterProjectId) :
     activeTasks.filter(t => t.project_id);
 
+  const sortedVisibleProjects = useMemo(() => sortedProjects(visibleProjects, projectSort), [visibleProjects, projectSort]);
+  const sortedVisibleTasks    = useMemo(() => sortedTasks(visibleTasks, taskSort), [visibleTasks, taskSort]);
+
   const projectsById = useMemo(() => new Map(projects.map(p => [p.id, p])), [projects]);
+
+  const timelineProject = filterProjectId !== null ? projectsById.get(filterProjectId) : undefined;
+  const timelineTasks   = useMemo(
+    () => filterProjectId !== null ? sortedVisibleTasks.filter(t => t.project_id === filterProjectId) : [],
+    [filterProjectId, sortedVisibleTasks],
+  );
 
   return (
     <>
@@ -96,7 +142,7 @@ function ScopeView({ scope, setScope, session }: ScopeViewProps) {
               title={session.user.email ?? ''}
             >
               🎯 ניהול פרויקטים
-              <span className="text-[10px] font-normal text-muted/70" dir="ltr">V1.09</span>
+              <span className="text-[10px] font-normal text-muted/70" dir="ltr">V1.10</span>
             </button>
             {menuOpen && (
               <div className="absolute top-full right-0 mt-1 min-w-[160px] card p-1 z-50 shadow-lg" role="menu">
@@ -195,21 +241,33 @@ function ScopeView({ scope, setScope, session }: ScopeViewProps) {
                 <section>
                   <div className="flex items-center justify-between mb-3">
                     <h2 className="text-lg font-semibold">{projectsHeading}</h2>
-                    {isActive && (
-                      <button onClick={() => setShowAdd('project')} className="btn-primary text-xs">
-                        <Plus size={14} /> הוסף
-                      </button>
-                    )}
+                    <div className="flex items-center gap-2">
+                      <select value={projectSort} onChange={e => setProjectSort(e.target.value as ProjectSort)}
+                        className="text-xs text-muted bg-transparent border border-border rounded-md px-1.5 py-1 cursor-pointer">
+                        <option value="priority">עדיפות</option>
+                        <option value="newest">חדש ראשון</option>
+                        <option value="oldest">ישן ראשון</option>
+                        <option value="due_asc">קרוב לסיום</option>
+                      </select>
+                      {isActive && (
+                        <button onClick={() => setShowAdd('project')} className="btn-primary text-xs">
+                          <Plus size={14} /> הוסף
+                        </button>
+                      )}
+                    </div>
                   </div>
                   <div className="space-y-3">
-                    {visibleProjects.length === 0 && (
+                    {sortedVisibleProjects.length === 0 && (
                       <div className="card p-6 text-center text-muted text-sm">אין פרויקטים</div>
                     )}
-                    {visibleProjects.map(p => (
+                    {sortedVisibleProjects.map(p => (
                       <div key={p.id}
                            onClick={() => view === 'projects' && setFilterProjectId(filterProjectId === p.id ? null : p.id)}
                            className={cn(view === 'projects' && 'cursor-pointer', filterProjectId === p.id && 'ring-1 ring-accent rounded-xl')}>
                         <ProjectCard project={p} scope={scope} progress={projectProgress.get(p.id) ?? { completed: 0, total: 0 }} fileCount={fileCounts.get(p.id) ?? 0} onChange={refreshAll} />
+                        {filterProjectId === p.id && timelineProject?.due_date && (
+                          <ProjectTimeline project={timelineProject} tasks={timelineTasks} />
+                        )}
                       </div>
                     ))}
                   </div>
@@ -225,18 +283,36 @@ function ScopeView({ scope, setScope, session }: ScopeViewProps) {
                         <button onClick={() => setFilterProjectId(null)} className="text-xs text-accent hover:underline">ניקוי סינון</button>
                       )}
                     </div>
-                    {isActive && (
-                      <button onClick={() => setShowAdd('task')} disabled={view === 'projects' && activeProjects.length === 0} className="btn-primary text-xs disabled:opacity-50">
-                        <Plus size={14} /> הוסף
-                      </button>
-                    )}
+                    <div className="flex items-center gap-2">
+                      <select value={taskSort} onChange={e => setTaskSort(e.target.value as TaskSort)}
+                        className="text-xs text-muted bg-transparent border border-border rounded-md px-1.5 py-1 cursor-pointer">
+                        <option value="priority">עדיפות</option>
+                        <option value="newest">חדש ראשון</option>
+                        <option value="oldest">ישן ראשון</option>
+                        <option value="due_asc">קרוב לסיום</option>
+                      </select>
+                      {isActive && (
+                        <button onClick={() => setShowAdd('task')} disabled={view === 'projects' && activeProjects.length === 0} className="btn-primary text-xs disabled:opacity-50">
+                          <Plus size={14} /> הוסף
+                        </button>
+                      )}
+                    </div>
                   </div>
                   <div className="space-y-2">
-                    {visibleTasks.length === 0 && (
+                    {sortedVisibleTasks.length === 0 && (
                       <div className="card p-6 text-center text-muted text-sm">אין משימות</div>
                     )}
-                    {visibleTasks.map(t => (
-                      <TaskRow key={t.id} task={t} project={t.project_id ? projectsById.get(t.project_id) : undefined} projects={projects} scope={scope} onChange={refreshAll} />
+                    {sortedVisibleTasks.map(t => (
+                      <TaskRow
+                        key={t.id}
+                        task={t}
+                        project={t.project_id ? projectsById.get(t.project_id) : undefined}
+                        projects={projects}
+                        scope={scope}
+                        onChange={refreshAll}
+                        isSelected={selectedTaskId === t.id}
+                        onSelect={() => setSelectedTaskId(selectedTaskId === t.id ? null : t.id)}
+                      />
                     ))}
                   </div>
                 </section>
