@@ -32,9 +32,10 @@ interface Props {
   onChange: () => void;
   isSelected?: boolean;
   onSelect?: () => void;
+  isLastClosed?: boolean;
 }
 
-export function TaskRow({ task, project, projects, scope, onChange, isSelected, onSelect }: Props) {
+export function TaskRow({ task, project, projects, scope, onChange, isSelected, onSelect, isLastClosed }: Props) {
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState<TaskDraft>(() => ({
     taskId: task.id,
@@ -138,17 +139,19 @@ export function TaskRow({ task, project, projects, scope, onChange, isSelected, 
           aria-label="סמן כהושלם"
         />
         <div className="flex-1 min-w-0">
+          {project && (
+            <div className="text-[10px] font-semibold text-accent/80 mb-0.5 truncate uppercase tracking-wide">{project.name}</div>
+          )}
           <div className={`text-sm leading-tight flex items-center gap-1.5 ${draftStatus === 'done' ? 'line-through text-muted' : ''}`}>
             {suggested && <Sparkles size={12} className="text-purple-400 shrink-0" />}
             <span className="truncate">{task.name}</span>
             {suggested && <span className="chip bg-purple-500/20 text-purple-300 text-[10px] shrink-0">מוצע ע״י AI</span>}
           </div>
-          {project && (
-            <div className="text-xs text-muted mt-0.5 truncate">{project.name}</div>
-          )}
           <div className="text-[10px] text-purple-400/70 mt-0.5 flex flex-wrap gap-x-2">
             <span title={formatDateTime(task.created_at)}>נפתח {formatDateTime(task.created_at)}</span>
-            {task.closed_at && <span title={formatDateTime(task.closed_at)}>· נסגר {formatDateTime(task.closed_at)}</span>}
+            {task.closed_at && (!task.project_id || isLastClosed) && (
+              <span title={formatDateTime(task.closed_at)}>· נסגר {formatDateTime(task.closed_at)}</span>
+            )}
             <span>· ⏱ {formatLifetime(task.created_at, task.closed_at)}</span>
           </div>
         </div>

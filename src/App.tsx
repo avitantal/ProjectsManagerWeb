@@ -125,6 +125,12 @@ function ScopeView({ scope, setScope, session }: ScopeViewProps) {
 
   const projectsById = useMemo(() => new Map(projects.map(p => [p.id, p])), [projects]);
 
+  const lastClosedTaskId = useMemo(() => {
+    const closed = tasks.filter(t => t.closed_at && t.project_id);
+    if (!closed.length) return null;
+    return closed.reduce((a, b) => (a.closed_at! > b.closed_at! ? a : b)).id;
+  }, [tasks]);
+
   const timelineProject = filterProjectId !== null ? projectsById.get(filterProjectId) : undefined;
   const timelineTasks   = useMemo(
     () => filterProjectId !== null ? sortedVisibleTasks.filter(t => t.project_id === filterProjectId) : [],
@@ -144,7 +150,7 @@ function ScopeView({ scope, setScope, session }: ScopeViewProps) {
               title={session.user.email ?? ''}
             >
               🎯 ניהול פרויקטים
-              <span className="text-[10px] font-normal text-muted/70" dir="ltr">V1.11</span>
+              <span className="text-[10px] font-normal text-muted/70" dir="ltr">V1.12</span>
             </button>
             {menuOpen && (
               <div className="absolute top-full right-0 mt-1 min-w-[160px] card p-1 z-50 shadow-lg" role="menu">
@@ -322,6 +328,7 @@ function ScopeView({ scope, setScope, session }: ScopeViewProps) {
                         onChange={refreshAll}
                         isSelected={selectedTaskId === t.id}
                         onSelect={() => setSelectedTaskId(selectedTaskId === t.id ? null : t.id)}
+                        isLastClosed={t.id === lastClosedTaskId}
                       />
                     ))}
                   </div>
