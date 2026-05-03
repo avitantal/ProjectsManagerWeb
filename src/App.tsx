@@ -1,6 +1,6 @@
 import { useState, useMemo, useEffect, useRef } from 'react';
 import type { Session } from '@supabase/supabase-js';
-import { Plus, RefreshCw, Factory, House, LogOut, Loader2, FolderKanban, ListTodo, CheckCircle2, Archive } from 'lucide-react';
+import { Plus, RefreshCw, Factory, House, LogOut, Loader2, FolderKanban, ListTodo, CheckCircle2, Archive, X } from 'lucide-react';
 import { useProjects, useTasks, useFileCounts } from './hooks/useData';
 import { useAuth } from './hooks/useAuth';
 import { supabase, type Scope, type Task, type Project } from './lib/supabase';
@@ -338,6 +338,48 @@ function ScopeView({ scope, setScope, session }: ScopeViewProps) {
           );
         })()}
       </main>
+
+      {filterProjectId !== null && view === 'projects' && (
+        <div className="lg:hidden fixed inset-0 z-50 flex flex-col justify-end">
+          <div className="absolute inset-0 bg-black/60" onClick={() => setFilterProjectId(null)} />
+          <div className="relative bg-bg border-t border-border rounded-t-2xl max-h-[82vh] flex flex-col">
+            <div className="flex items-center justify-between px-4 py-3 border-b border-border shrink-0">
+              <h3 className="font-semibold text-text truncate">{projectsById.get(filterProjectId)?.name}</h3>
+              <button onClick={() => setFilterProjectId(null)} className="text-muted hover:text-text shrink-0 ml-2">
+                <X size={18} />
+              </button>
+            </div>
+            {timelineProject?.due_date && (
+              <div className="shrink-0">
+                <ProjectTimeline project={timelineProject} tasks={timelineTasks} />
+              </div>
+            )}
+            <div className="overflow-y-auto flex-1 p-3 space-y-2">
+              {sortedVisibleTasks.length === 0 && (
+                <div className="card p-6 text-center text-muted text-sm">אין משימות</div>
+              )}
+              {sortedVisibleTasks.map(t => (
+                <TaskRow
+                  key={t.id}
+                  task={t}
+                  project={t.project_id ? projectsById.get(t.project_id) : undefined}
+                  projects={projects}
+                  scope={scope}
+                  onChange={refreshAll}
+                  isSelected={selectedTaskId === t.id}
+                  onSelect={() => setSelectedTaskId(selectedTaskId === t.id ? null : t.id)}
+                  isLastClosed={t.id === lastClosedTaskId}
+                />
+              ))}
+            </div>
+            <div className="p-3 border-t border-border shrink-0">
+              <button onClick={() => setShowAdd('task')} className="btn-primary text-sm w-full justify-center">
+                <Plus size={14} /> הוסף משימה
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {showAdd && (
         <AddDialog
