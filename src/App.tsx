@@ -101,8 +101,9 @@ function ScopeView({ scope, setScope, session }: ScopeViewProps) {
   const doneProjects    = useMemo(() => projects.filter(p => p.status === 'done'), [projects]);
   const frozenProjects  = useMemo(() => projects.filter(p => p.status === 'frozen'), [projects]);
 
-  const doneTasksWithProj = useMemo(() => tasks.filter(t => t.status === 'done' && t.project_id), [tasks]);
-  const doneTasksOrphan   = useMemo(() => tasks.filter(t => t.status === 'done' && !t.project_id), [tasks]);
+  const doneTasksWithProj  = useMemo(() => tasks.filter(t => t.status === 'done' && t.project_id), [tasks]);
+  const doneTasksOrphan    = useMemo(() => tasks.filter(t => t.status === 'done' && !t.project_id), [tasks]);
+  const frozenTasksCount   = useMemo(() => tasks.filter(t => t.status === 'frozen' && t.project_id).length, [tasks]);
 
   const visibleProjects =
     view === 'projects-done'   ? doneProjects :
@@ -113,7 +114,7 @@ function ScopeView({ scope, setScope, session }: ScopeViewProps) {
   const visibleTasks = (() => {
     const hide = (arr: Task[]) => hideDone ? arr.filter(t => t.status !== 'done') : arr;
     if (view === 'projects-done')   return doneTasksWithProj;
-    if (view === 'projects-frozen') return [];
+    if (view === 'projects-frozen') return tasks.filter(t => t.status === 'frozen' && t.project_id);
     if (view === 'orphans-done')    return doneTasksOrphan;
     if (view === 'orphans')         return hide(tasks.filter(t => !t.project_id));
     if (filterProjectId !== null)   return hide(tasks.filter(t => t.project_id === filterProjectId));
@@ -150,7 +151,7 @@ function ScopeView({ scope, setScope, session }: ScopeViewProps) {
               title={session.user.email ?? ''}
             >
               🎯 ניהול פרויקטים
-              <span className="text-[10px] font-normal text-muted/70" dir="ltr">V1.14</span>
+              <span className="text-[10px] font-normal text-muted/70" dir="ltr">V1.15</span>
             </button>
             {menuOpen && (
               <div className="absolute top-full right-0 mt-1 min-w-[160px] card p-1 z-50 shadow-lg" role="menu">
@@ -213,7 +214,7 @@ function ScopeView({ scope, setScope, session }: ScopeViewProps) {
             <div className="flex items-center gap-3">
               {([
                 { id: 'projects-done'   as const, icon: CheckCircle2, label: 'הושלמו', badge: doneProjects.length + doneTasksWithProj.length },
-                { id: 'projects-frozen' as const, icon: Archive,      label: 'מחוקים', badge: frozenProjects.length },
+                { id: 'projects-frozen' as const, icon: Archive,      label: 'מחוקים', badge: frozenProjects.length + frozenTasksCount },
               ]).map(({ id, icon: Icon, label, badge }) => (
                 <button key={id} onClick={() => setViewPersisted(id)}
                   className={cn('flex items-center gap-1 text-xs transition-colors', view === id ? 'text-accent' : 'text-muted/60 hover:text-muted')}
@@ -239,9 +240,9 @@ function ScopeView({ scope, setScope, session }: ScopeViewProps) {
         {(() => {
           const isActive = view === 'projects' || view === 'orphans';
           const showProjectsCol = ['projects','projects-done','projects-frozen'].includes(view);
-          const showTasksCol = view !== 'projects-frozen';
+          const showTasksCol = true;
           const projectsHeading = view === 'projects-done' ? 'פרויקטים שהושלמו' : view === 'projects-frozen' ? 'פרויקטים מחוקים' : 'פרויקטים';
-          const tasksHeading = view === 'projects-done' || view === 'orphans-done' ? 'משימות שהושלמו' : 'משימות';
+          const tasksHeading = view === 'projects-done' || view === 'orphans-done' ? 'משימות שהושלמו' : view === 'projects-frozen' ? 'משימות מחוקות' : 'משימות';
 
           return (
             <div className={cn('grid grid-cols-1 gap-6', showProjectsCol && showTasksCol && 'lg:grid-cols-[1fr,1.5fr]')}>

@@ -70,8 +70,10 @@ export function ProjectCard({ project, scope, progress, fileCount, onChange, all
 
   async function remove() {
     if (allowPermDelete) {
+      await supabase.from(`${scope}_tasks`).delete().eq('project_id', project.id);
       await supabase.from(`${scope}_projects`).delete().eq('id', project.id);
     } else {
+      await supabase.from(`${scope}_tasks`).update({ status: 'frozen' }).eq('project_id', project.id);
       await supabase.from(`${scope}_projects`).update({ status: 'frozen' }).eq('id', project.id);
     }
     setConfirmingDeleteId(null);

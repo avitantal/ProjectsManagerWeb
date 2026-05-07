@@ -106,7 +106,7 @@ export function AddDialog({ scope, type, projects, defaultProjectId, editing, on
             <div>
               <label className="block text-xs text-muted mb-1">סטטוס</label>
               <select className="input" value={status} onChange={(e) => setStatus(e.target.value)}>
-                {Object.entries(type === 'project' ? PROJECT_STATUS_HE : TASK_STATUS_HE).map(([k, v]) => (
+                {Object.entries(type === 'project' ? PROJECT_STATUS_HE : TASK_STATUS_HE).filter(([k]) => type === 'project' || k !== 'frozen').map(([k, v]) => (
                   <option key={k} value={k}>{v}</option>
                 ))}
               </select>

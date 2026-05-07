@@ -9,7 +9,7 @@ export type Scope = 'factory' | 'personal';
 
 export type ProjectStatus = 'idea' | 'planned' | 'in_progress' | 'done' | 'frozen';
 export type Priority = 'high' | 'medium' | 'low';
-export type TaskStatus = 'todo' | 'in_progress' | 'review' | 'done';
+export type TaskStatus = 'todo' | 'in_progress' | 'review' | 'done' | 'frozen';
 export type TaskPriority = 'urgent' | 'high' | 'normal' | 'low';
 
 export interface Project {
@@ -69,6 +69,7 @@ export const TASK_STATUS_HE: Record<TaskStatus, string> = {
   in_progress: 'בעבודה',
   review: 'בבדיקה',
   done: 'הושלם',
+  frozen: 'מחוק',
 };
 
 export const TASK_PRIORITY_HE: Record<TaskPriority, string> = {
@@ -83,6 +84,7 @@ export const TASK_STATUS_COLOR: Record<TaskStatus, string> = {
   in_progress: 'bg-orange-600/30 text-orange-300',
   review: 'bg-yellow-600/30 text-yellow-300',
   done: 'bg-green-600/30 text-green-300',
+  frozen: 'bg-red-600/30 text-red-300',
 };
 
 export const TASK_PRIORITY_COLOR: Record<TaskPriority, string> = {

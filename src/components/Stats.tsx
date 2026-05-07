@@ -8,8 +8,8 @@ interface Props {
 
 export function Stats({ projects, tasks }: Props) {
   const activeProjects = projects.filter(p => p.status === 'in_progress').length;
-  const openTasks = tasks.filter(t => t.status !== 'done').length;
-  const urgent = tasks.filter(t => t.priority === 'urgent' && t.status !== 'done').length;
+  const openTasks = tasks.filter(t => t.status !== 'done' && t.status !== 'frozen').length;
+  const urgent = tasks.filter(t => t.priority === 'urgent' && t.status !== 'done' && t.status !== 'frozen').length;
   const doneTasks = tasks.filter(t => t.status === 'done').length;
 
   const items = [

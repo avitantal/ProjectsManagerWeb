@@ -183,7 +183,7 @@ export function TaskRow({ task, project, projects, scope, onChange, isSelected, 
           disabled={savingChanges}
           className={`chip ${TASK_STATUS_COLOR[draftStatus]} bg-transparent border-0 cursor-pointer text-xs disabled:cursor-not-allowed`}
         >
-          {Object.entries(TASK_STATUS_HE).map(([k, v]) => (
+          {Object.entries(TASK_STATUS_HE).filter(([k]) => k !== 'frozen').map(([k, v]) => (
             <option key={k} value={k} className="bg-surface text-text">{v}</option>
           ))}
         </select>
@@ -205,7 +205,7 @@ export function TaskRow({ task, project, projects, scope, onChange, isSelected, 
             אשר
           </button>
         )}
-        {confirmingDelete ? (
+        {task.status !== 'frozen' && (confirmingDelete ? (
           <div className="flex items-center gap-1 shrink-0">
             <button type="button" onClick={() => void remove()} className="rounded-md bg-red-500/20 px-2 py-1 text-xs text-red-200 hover:bg-red-500/30">
               מחק
@@ -233,7 +233,7 @@ export function TaskRow({ task, project, projects, scope, onChange, isSelected, 
               <Trash2 size={14} />
             </button>
           </div>
-        )}
+        ))}
       </div>
 
       {isSelected && (
