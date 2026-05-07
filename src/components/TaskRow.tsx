@@ -173,11 +173,11 @@ export function TaskRow({ task, project, projects, scope, onChange, isSelected, 
         />
         <div className="flex-1 min-w-0">
           {project && (
-            <div className="text-[10px] font-semibold text-accent/80 truncate uppercase tracking-wide">{project.name}</div>
+            <div className="text-[10px] font-semibold text-accent/80 uppercase tracking-wide">{project.name}</div>
           )}
-          <div className={`text-sm leading-tight flex items-center gap-1.5 ${draftStatus === 'done' ? 'line-through text-muted' : ''}`}>
+          <div className={`text-sm leading-tight flex flex-wrap items-center gap-1.5 ${draftStatus === 'done' ? 'line-through text-muted' : ''}`}>
             {suggested && <Sparkles size={12} className="text-purple-400 shrink-0" />}
-            <span className="truncate">{task.name}</span>
+            <span>{task.name}</span>
             {suggested && <span className="chip bg-purple-500/20 text-purple-300 text-[10px] shrink-0">מוצע ע״י AI</span>}
             {task.notes && !isSelected && <NotebookPen size={11} className="text-muted/50 shrink-0" />}
           </div>
