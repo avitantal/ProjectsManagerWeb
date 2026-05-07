@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Calendar, ChevronDown, ChevronUp, Paperclip, Pencil, Trash2 } from 'lucide-react';
+import { Calendar, ChevronDown, ChevronUp, Paperclip, Pencil, RotateCcw, Trash2 } from 'lucide-react';
 import { ProjectFiles } from './ProjectFiles';
 import { AddDialog } from './AddDialog';
 import {
@@ -80,6 +80,12 @@ export function ProjectCard({ project, scope, progress, fileCount, onChange, all
     onChange();
   }
 
+  async function restore() {
+    await supabase.from(`${scope}_tasks`).update({ status: 'todo' }).eq('project_id', project.id).eq('status', 'frozen');
+    await supabase.from(`${scope}_projects`).update({ status: 'planned' }).eq('id', project.id);
+    onChange();
+  }
+
   function updateDraftStatus(status: ProjectStatus) {
     setStatusDraft({ ...activeStatusDraft, value: status });
   }
@@ -95,6 +101,27 @@ export function ProjectCard({ project, scope, progress, fileCount, onChange, all
             </button>
             <button type="button" onClick={() => setConfirmingDeleteId(null)} className="rounded-md px-2 py-1 text-xs text-muted hover:bg-surface hover:text-text">
               בטל
+            </button>
+          </div>
+        ) : allowPermDelete ? (
+          <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition">
+            <button
+              type="button"
+              onClick={(e) => { e.stopPropagation(); void restore(); }}
+              className="text-muted hover:text-green-400"
+              aria-label="שחזר"
+              title="שחזר לפעילים"
+            >
+              <RotateCcw size={16} />
+            </button>
+            <button
+              type="button"
+              onClick={(e) => { e.stopPropagation(); setConfirmingDeleteId(project.id); }}
+              className="text-muted hover:text-red-400"
+              aria-label="מחק לצמיתות"
+              title="מחק לצמיתות"
+            >
+              <Trash2 size={16} />
             </button>
           </div>
         ) : (

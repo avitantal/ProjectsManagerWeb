@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Check, Pencil, Sparkles, Trash2, NotebookPen } from 'lucide-react';
+import { Check, Pencil, RotateCcw, Sparkles, Trash2, NotebookPen } from 'lucide-react';
 import {
   type Task,
   type TaskStatus,
@@ -99,6 +99,11 @@ export function TaskRow({ task, project, projects, scope, onChange, isSelected, 
   async function remove() {
     await supabase.from(`${scope}_tasks`).delete().eq('id', task.id);
     setConfirmingDeleteId(null);
+    onChange();
+  }
+
+  async function restore() {
+    await supabase.from(`${scope}_tasks`).update({ status: 'todo' }).eq('id', task.id);
     onChange();
   }
 
@@ -205,7 +210,19 @@ export function TaskRow({ task, project, projects, scope, onChange, isSelected, 
             אשר
           </button>
         )}
-        {task.status !== 'frozen' && (confirmingDelete ? (
+        {task.status === 'frozen' ? (
+          <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition">
+            <button
+              type="button"
+              onClick={() => void restore()}
+              className="text-muted hover:text-green-400"
+              aria-label="שחזר"
+              title="שחזר לפעילות"
+            >
+              <RotateCcw size={14} />
+            </button>
+          </div>
+        ) : confirmingDelete ? (
           <div className="flex items-center gap-1 shrink-0">
             <button type="button" onClick={() => void remove()} className="rounded-md bg-red-500/20 px-2 py-1 text-xs text-red-200 hover:bg-red-500/30">
               מחק
@@ -233,7 +250,7 @@ export function TaskRow({ task, project, projects, scope, onChange, isSelected, 
               <Trash2 size={14} />
             </button>
           </div>
-        ))}
+        )}
       </div>
 
       {isSelected && (
