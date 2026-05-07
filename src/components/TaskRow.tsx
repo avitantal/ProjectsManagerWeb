@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { useSwipeable } from 'react-swipeable';
 import { Check, Pencil, RotateCcw, Sparkles, Trash2, NotebookPen } from 'lucide-react';
 import {
   type Task,
@@ -49,6 +50,16 @@ export function TaskRow({ task, project, projects, scope, onChange, isSelected, 
   const [notesDraft, setNotesDraft] = useState(task.notes ?? '');
   const [savingNotes, setSavingNotes] = useState(false);
   const [editingNotes, setEditingNotes] = useState(false);
+  const [swipeX, setSwipeX] = useState(0);
+  const SWIPE_THRESHOLD = 80;
+
+  const swipeHandlers = useSwipeable({
+    onSwiping: ({ deltaX }) => { if (deltaX < 0) setSwipeX(Math.min(Math.abs(deltaX), 120)); },
+    onSwipedLeft: ({ absX }) => { if (absX >= SWIPE_THRESHOLD) void remove(); setSwipeX(0); },
+    onSwiped: () => setSwipeX(0),
+    preventScrollOnSwipe: true,
+    trackMouse: false,
+  });
 
   useEffect(() => {
     if (!isSelected) setEditingNotes(false);
@@ -131,6 +142,14 @@ export function TaskRow({ task, project, projects, scope, onChange, isSelected, 
   const suggested = task.is_suggested;
 
   return (
+    <div className="relative overflow-hidden rounded-xl" {...swipeHandlers}>
+      <div
+        className="absolute inset-y-0 left-0 right-0 flex items-center justify-end px-4 bg-red-600 rounded-xl pointer-events-none"
+        style={{ opacity: Math.min(swipeX / SWIPE_THRESHOLD, 1) }}
+      >
+        <Trash2 size={18} className="text-white" />
+      </div>
+      <div style={{ transform: `translateX(-${swipeX}px)`, transition: swipeX === 0 ? 'transform 0.2s ease' : 'none' }}>
     <div
       className={`card p-3 transition-colors group flex flex-col gap-2 ${
         suggested
@@ -293,6 +312,8 @@ export function TaskRow({ task, project, projects, scope, onChange, isSelected, 
           onSaved={onChange}
         />
       )}
+    </div>
+      </div>
     </div>
   );
 }

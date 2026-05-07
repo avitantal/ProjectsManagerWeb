@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useSwipeable } from 'react-swipeable';
 import { Calendar, ChevronDown, ChevronUp, Paperclip, Pencil, RotateCcw, Trash2 } from 'lucide-react';
 import { ProjectFiles } from './ProjectFiles';
 import { AddDialog } from './AddDialog';
@@ -45,6 +46,16 @@ export function ProjectCard({ project, scope, progress, fileCount, onChange, all
   const [confirmingDeleteId, setConfirmingDeleteId] = useState<number | null>(null);
   const [showFiles, setShowFiles] = useState(false);
   const [editing, setEditing] = useState(false);
+  const [swipeX, setSwipeX] = useState(0);
+  const SWIPE_THRESHOLD = 80;
+
+  const swipeHandlers = useSwipeable({
+    onSwiping: ({ deltaX }) => { if (deltaX < 0) setSwipeX(Math.min(Math.abs(deltaX), 120)); },
+    onSwipedLeft: ({ absX }) => { if (absX >= SWIPE_THRESHOLD) void remove(); setSwipeX(0); },
+    onSwiped: () => setSwipeX(0),
+    preventScrollOnSwipe: true,
+    trackMouse: false,
+  });
   const activeStatusDraft = statusDraft.projectId === project.id && statusDraft.savedStatus === project.status
     ? statusDraft
     : { projectId: project.id, savedStatus: project.status, value: project.status };
@@ -91,6 +102,14 @@ export function ProjectCard({ project, scope, progress, fileCount, onChange, all
   }
 
   return (
+    <div className="relative overflow-hidden rounded-xl" {...swipeHandlers}>
+      <div
+        className="absolute inset-y-0 left-0 right-0 flex items-center justify-end px-5 bg-red-600 rounded-xl pointer-events-none"
+        style={{ opacity: Math.min(swipeX / SWIPE_THRESHOLD, 1) }}
+      >
+        <Trash2 size={20} className="text-white" />
+      </div>
+      <div style={{ transform: `translateX(-${swipeX}px)`, transition: swipeX === 0 ? 'transform 0.2s ease' : 'none' }}>
     <div className="card p-4 hover:border-zinc-600 transition-colors group">
       <div className="flex items-start justify-between gap-2 mb-2">
         <h3 className="font-medium text-text leading-tight">{project.name}</h3>
@@ -234,6 +253,8 @@ export function ProjectCard({ project, scope, progress, fileCount, onChange, all
           />
         </div>
       )}
+    </div>
+      </div>
     </div>
   );
 }
