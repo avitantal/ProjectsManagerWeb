@@ -50,10 +50,13 @@ export function ProjectCard({ project, scope, progress, fileCount, onChange, all
   const SWIPE_THRESHOLD = 80;
 
   const swipeHandlers = useSwipeable({
-    onSwiping: ({ deltaX }) => { if (deltaX < 0) setSwipeX(Math.min(Math.abs(deltaX), 120)); },
+    onSwiping: ({ deltaX, deltaY }) => {
+      if (Math.abs(deltaX) > Math.abs(deltaY) && deltaX < 0)
+        setSwipeX(Math.min(Math.abs(deltaX), 120));
+    },
     onSwipedLeft: ({ absX }) => { if (absX >= SWIPE_THRESHOLD) void remove(); setSwipeX(0); },
     onSwiped: () => setSwipeX(0),
-    preventScrollOnSwipe: true,
+    preventScrollOnSwipe: false,
     trackMouse: false,
   });
   const activeStatusDraft = statusDraft.projectId === project.id && statusDraft.savedStatus === project.status

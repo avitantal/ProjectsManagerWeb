@@ -54,10 +54,13 @@ export function TaskRow({ task, project, projects, scope, onChange, isSelected, 
   const SWIPE_THRESHOLD = 80;
 
   const swipeHandlers = useSwipeable({
-    onSwiping: ({ deltaX }) => { if (deltaX < 0) setSwipeX(Math.min(Math.abs(deltaX), 120)); },
+    onSwiping: ({ deltaX, deltaY }) => {
+      if (Math.abs(deltaX) > Math.abs(deltaY) && deltaX < 0)
+        setSwipeX(Math.min(Math.abs(deltaX), 120));
+    },
     onSwipedLeft: ({ absX }) => { if (absX >= SWIPE_THRESHOLD) void remove(); setSwipeX(0); },
     onSwiped: () => setSwipeX(0),
-    preventScrollOnSwipe: true,
+    preventScrollOnSwipe: false,
     trackMouse: false,
   });
 
@@ -151,7 +154,7 @@ export function TaskRow({ task, project, projects, scope, onChange, isSelected, 
       </div>
       <div style={{ transform: `translateX(-${swipeX}px)`, transition: swipeX === 0 ? 'transform 0.2s ease' : 'none' }}>
     <div
-      className={`card p-3 transition-colors group flex flex-col gap-2 ${
+      className={`card p-2 sm:p-3 transition-colors group flex flex-col gap-1 sm:gap-2 ${
         suggested
           ? 'bg-purple-500/10 border-dashed border-purple-500/40 hover:border-purple-400/60'
           : isSelected ? 'border-accent/60' : 'hover:border-zinc-600'
@@ -170,7 +173,7 @@ export function TaskRow({ task, project, projects, scope, onChange, isSelected, 
         />
         <div className="flex-1 min-w-0">
           {project && (
-            <div className="text-[10px] font-semibold text-accent/80 mb-0.5 truncate uppercase tracking-wide">{project.name}</div>
+            <div className="text-[10px] font-semibold text-accent/80 truncate uppercase tracking-wide">{project.name}</div>
           )}
           <div className={`text-sm leading-tight flex items-center gap-1.5 ${draftStatus === 'done' ? 'line-through text-muted' : ''}`}>
             {suggested && <Sparkles size={12} className="text-purple-400 shrink-0" />}
@@ -178,7 +181,7 @@ export function TaskRow({ task, project, projects, scope, onChange, isSelected, 
             {suggested && <span className="chip bg-purple-500/20 text-purple-300 text-[10px] shrink-0">מוצע ע״י AI</span>}
             {task.notes && !isSelected && <NotebookPen size={11} className="text-muted/50 shrink-0" />}
           </div>
-          <div className="text-[10px] text-purple-400/70 mt-0.5 flex flex-wrap gap-x-2">
+          <div className="text-[10px] text-purple-400/70 mt-0.5 hidden sm:flex flex-wrap gap-x-2">
             <span title={formatDateTime(task.created_at)}>נפתח {formatDateTime(task.created_at)}</span>
             {task.closed_at && (!task.project_id || isLastClosed) && (
               <span title={formatDateTime(task.closed_at)}>· נסגר {formatDateTime(task.closed_at)}</span>
