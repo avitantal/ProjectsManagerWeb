@@ -10,6 +10,7 @@ import { TaskRow } from './components/TaskRow';
 import { AddDialog } from './components/AddDialog';
 import { Auth } from './components/Auth';
 import { cn } from './lib/utils';
+import { buildProjectProgress, getProjectProgress, isProjectActive, isProjectComplete, isProjectDone } from './lib/projectProgress';
 
 type TaskSort    = 'priority' | 'newest' | 'oldest' | 'due_asc';
 type ProjectSort = 'priority' | 'newest' | 'oldest' | 'due_asc';
@@ -72,6 +73,7 @@ function ScopeView({ scope, setScope, session }: ScopeViewProps) {
   const [hideDone, setHideDone] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
+  const syncedDoneProjectIds = useRef<Set<number>>(new Set());
 
   useEffect(() => {
     if (!menuOpen) return;
@@ -84,25 +86,65 @@ function ScopeView({ scope, setScope, session }: ScopeViewProps) {
 
   function refreshAll() { refreshProjects(); refreshTasks(); refreshFileCounts(); }
 
-  const projectProgress = useMemo(() => {
-    const m = new Map<number, { completed: number; total: number }>();
-    tasks.forEach(t => {
-      if (!t.project_id) return;
-      const current = m.get(t.project_id) ?? { completed: 0, total: 0 };
-      current.total += 1;
-      if (t.status === 'done') current.completed += 1;
-      m.set(t.project_id, current);
-    });
-    return m;
-  }, [tasks]);
+  const projectProgress = useMemo(() => buildProjectProgress(tasks), [tasks]);
 
-  const activeProjects  = useMemo(() => projects.filter(p => p.status !== 'done' && p.status !== 'frozen'), [projects]);
-  const doneProjects    = useMemo(() => projects.filter(p => p.status === 'done'), [projects]);
+  const activeProjects  = useMemo(
+    () => projects.filter(p => isProjectActive(p, getProjectProgress(projectProgress, p.id))),
+    [projectProgress, projects],
+  );
+  const doneProjects    = useMemo(
+    () => projects.filter(p => isProjectDone(p, getProjectProgress(projectProgress, p.id))),
+    [projectProgress, projects],
+  );
   const frozenProjects  = useMemo(() => projects.filter(p => p.status === 'frozen'), [projects]);
 
-  const doneTasksWithProj  = useMemo(() => tasks.filter(t => t.status === 'done' && t.project_id), [tasks]);
+  const doneProjectIds = useMemo(() => new Set(doneProjects.map(p => p.id)), [doneProjects]);
+  const activeProjectIds = useMemo(() => new Set(activeProjects.map(p => p.id)), [activeProjects]);
+  const frozenProjectIds = useMemo(() => new Set(frozenProjects.map(p => p.id)), [frozenProjects]);
+  const activeProjectTasks = useMemo(() => tasks.filter(t => t.project_id && activeProjectIds.has(t.project_id)), [activeProjectIds, tasks]);
+  const doneProjectTasks  = useMemo(() => tasks.filter(t => t.project_id && doneProjectIds.has(t.project_id)), [doneProjectIds, tasks]);
+  const frozenProjectTasks = useMemo(() => tasks.filter(t => t.project_id && frozenProjectIds.has(t.project_id)), [frozenProjectIds, tasks]);
   const doneTasksOrphan    = useMemo(() => tasks.filter(t => t.status === 'done' && !t.project_id), [tasks]);
-  const frozenTasksCount   = useMemo(() => tasks.filter(t => t.status === 'frozen' && t.project_id).length, [tasks]);
+
+  useEffect(() => {
+    if (view !== 'projects' || filterProjectId === null || activeProjectIds.has(filterProjectId)) return;
+    const timeout = window.setTimeout(() => setFilterProjectId(null), 0);
+    return () => window.clearTimeout(timeout);
+  }, [activeProjectIds, filterProjectId, view]);
+
+  const projectsToAutoComplete = useMemo(
+    () => projects.filter((project) => {
+      if (project.status === 'done' || project.status === 'frozen') return false;
+      return isProjectComplete(getProjectProgress(projectProgress, project.id));
+    }),
+    [projectProgress, projects],
+  );
+
+  useEffect(() => {
+    const pendingProjects = projectsToAutoComplete.filter(project => !syncedDoneProjectIds.current.has(project.id));
+    if (pendingProjects.length === 0) return;
+
+    pendingProjects.forEach(project => syncedDoneProjectIds.current.add(project.id));
+    let cancelled = false;
+    const timeout = window.setTimeout(() => {
+      const closedAt = new Date().toISOString();
+      void Promise.all(
+        pendingProjects.map(project =>
+          supabase
+            .from(`${scope}_projects`)
+            .update({ status: 'done', closed_at: project.closed_at ?? closedAt })
+            .eq('id', project.id),
+        ),
+      ).finally(() => {
+        if (!cancelled) refreshProjects();
+      });
+    }, 0);
+
+    return () => {
+      cancelled = true;
+      window.clearTimeout(timeout);
+    };
+  }, [projectsToAutoComplete, refreshProjects, scope]);
 
   const visibleProjects = useMemo(() => (
     view === 'projects-done'   ? doneProjects :
@@ -113,12 +155,12 @@ function ScopeView({ scope, setScope, session }: ScopeViewProps) {
 
   const visibleTasks = (() => {
     const hide = (arr: Task[]) => hideDone ? arr.filter(t => t.status !== 'done') : arr;
-    if (view === 'projects-done')   return doneTasksWithProj;
-    if (view === 'projects-frozen') return tasks.filter(t => t.status === 'frozen' && t.project_id);
+    if (view === 'projects-done')   return doneProjectTasks;
+    if (view === 'projects-frozen') return frozenProjectTasks;
     if (view === 'orphans-done')    return doneTasksOrphan;
     if (view === 'orphans')         return hide(tasks.filter(t => !t.project_id));
     if (filterProjectId !== null)   return hide(tasks.filter(t => t.project_id === filterProjectId));
-    return hide(tasks.filter(t => t.project_id));
+    return hide(activeProjectTasks);
   })();
 
   const sortedVisibleProjects = useMemo(() => sortedProjects(visibleProjects, projectSort), [visibleProjects, projectSort]);
@@ -207,8 +249,8 @@ function ScopeView({ scope, setScope, session }: ScopeViewProps) {
           {['projects','projects-done','projects-frozen'].includes(view) && (
             <div className="flex items-center gap-3">
               {([
-                { id: 'projects-done'   as const, icon: CheckCircle2, label: 'הושלמו', badge: doneProjects.length + doneTasksWithProj.length },
-                { id: 'projects-frozen' as const, icon: Archive,      label: 'מחוקים', badge: frozenProjects.length + frozenTasksCount },
+                { id: 'projects-done'   as const, icon: CheckCircle2, label: 'הושלמו', badge: doneProjects.length },
+                { id: 'projects-frozen' as const, icon: Archive,      label: 'מחוקים', badge: frozenProjects.length },
               ]).map(({ id, icon: Icon, label, badge }) => (
                 <button key={id} onClick={() => setViewPersisted(id)}
                   className={cn('flex items-center gap-1 text-xs transition-colors', view === id ? 'text-accent' : 'text-muted/60 hover:text-muted')}
@@ -236,7 +278,7 @@ function ScopeView({ scope, setScope, session }: ScopeViewProps) {
           const showProjectsCol = ['projects','projects-done','projects-frozen'].includes(view);
           const showTasksCol = true;
           const projectsHeading = view === 'projects-done' ? 'פרויקטים שהושלמו' : view === 'projects-frozen' ? 'פרויקטים מחוקים' : 'פרויקטים';
-          const tasksHeading = view === 'projects-done' || view === 'orphans-done' ? 'משימות שהושלמו' : view === 'projects-frozen' ? 'משימות מחוקות' : 'משימות';
+          const tasksHeading = view === 'projects-done' ? 'משימות בפרויקטים שהושלמו' : view === 'orphans-done' ? 'משימות שהושלמו' : view === 'projects-frozen' ? 'משימות מחוקות' : 'משימות';
 
           return (
             <div className={cn('grid grid-cols-1 gap-6', showProjectsCol && showTasksCol && 'lg:grid-cols-[1fr,1.5fr]')}>
@@ -267,7 +309,7 @@ function ScopeView({ scope, setScope, session }: ScopeViewProps) {
                       <div key={p.id}
                            onClick={() => view === 'projects' && setFilterProjectId(filterProjectId === p.id ? null : p.id)}
                            className={cn(view === 'projects' && 'cursor-pointer', filterProjectId === p.id && 'ring-1 ring-accent rounded-xl')}>
-                        <ProjectCard project={p} scope={scope} progress={projectProgress.get(p.id) ?? { completed: 0, total: 0 }} fileCount={fileCounts.get(p.id) ?? 0} onChange={refreshAll} allowPermDelete={view === 'projects-frozen'} />
+                        <ProjectCard project={p} scope={scope} progress={getProjectProgress(projectProgress, p.id)} fileCount={fileCounts.get(p.id) ?? 0} onChange={refreshAll} allowPermDelete={view === 'projects-frozen'} />
                       </div>
                     ))}
                   </div>

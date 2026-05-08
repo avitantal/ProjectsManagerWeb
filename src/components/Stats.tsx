@@ -1,5 +1,6 @@
 import { ListChecks, Briefcase, AlertCircle, CheckCircle2 } from 'lucide-react';
 import type { Project, Task } from '../lib/supabase';
+import { buildProjectProgress, getProjectProgress, isProjectActive, isProjectDone } from '../lib/projectProgress';
 
 interface Props {
   projects: Project[];
@@ -7,16 +8,23 @@ interface Props {
 }
 
 export function Stats({ projects, tasks }: Props) {
-  const activeProjects = projects.filter(p => p.status === 'in_progress').length;
-  const openTasks = tasks.filter(t => t.status !== 'done' && t.status !== 'frozen').length;
-  const urgent = tasks.filter(t => t.priority === 'urgent' && t.status !== 'done' && t.status !== 'frozen').length;
-  const doneTasks = tasks.filter(t => t.status === 'done').length;
+  const projectProgress = buildProjectProgress(tasks);
+  const activeProjectIds = new Set(
+    projects
+      .filter(p => isProjectActive(p, getProjectProgress(projectProgress, p.id)))
+      .map(p => p.id),
+  );
+  const activeProjects = activeProjectIds.size;
+  const taskBelongsToActiveWork = (task: Task) => !task.project_id || activeProjectIds.has(task.project_id);
+  const openTasks = tasks.filter(t => taskBelongsToActiveWork(t) && t.status !== 'done' && t.status !== 'frozen').length;
+  const urgent = tasks.filter(t => taskBelongsToActiveWork(t) && t.priority === 'urgent' && t.status !== 'done' && t.status !== 'frozen').length;
+  const doneProjects = projects.filter(p => isProjectDone(p, getProjectProgress(projectProgress, p.id))).length;
 
   const items = [
     { label: 'פעילים', longLabel: 'פרויקטים פעילים', value: activeProjects, icon: Briefcase, color: 'text-orange-300' },
     { label: 'פתוחות', longLabel: 'משימות פתוחות', value: openTasks, icon: ListChecks, color: 'text-blue-300' },
     { label: 'דחופות', longLabel: 'דחופות', value: urgent, icon: AlertCircle, color: 'text-red-300' },
-    { label: 'הושלמו', longLabel: 'הושלמו', value: doneTasks, icon: CheckCircle2, color: 'text-green-300' },
+    { label: 'הושלמו', longLabel: 'פרויקטים שהושלמו', value: doneProjects, icon: CheckCircle2, color: 'text-green-300' },
   ];
 
   return (

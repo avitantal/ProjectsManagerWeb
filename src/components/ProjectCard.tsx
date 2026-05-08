@@ -15,6 +15,7 @@ import {
 } from '../lib/supabase';
 import { formatDate, formatDateTime, formatLifetime, daysUntil } from '../lib/utils';
 import { InlineChangeActions } from './InlineChangeActions';
+import { getProjectProgressPercent } from '../lib/projectProgress';
 
 interface StatusDraft {
   projectId: number;
@@ -65,9 +66,7 @@ export function ProjectCard({ project, scope, progress, fileCount, onChange, all
   const draftStatus = activeStatusDraft.value;
   const confirmingDelete = confirmingDeleteId === project.id;
   const statusChanged = draftStatus !== project.status;
-  const progressPercent = progress.total > 0
-    ? Math.round((progress.completed / progress.total) * 100)
-    : project.status === 'done' ? 100 : 0;
+  const progressPercent = getProjectProgressPercent(project, progress);
 
   async function saveStatus() {
     setSavingStatus(true);
