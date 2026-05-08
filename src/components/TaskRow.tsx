@@ -65,7 +65,9 @@ export function TaskRow({ task, project, projects, scope, onChange, isSelected, 
   });
 
   useEffect(() => {
-    if (!isSelected) setEditingNotes(false);
+    if (isSelected) return;
+    const timeout = window.setTimeout(() => setEditingNotes(false), 0);
+    return () => window.clearTimeout(timeout);
   }, [isSelected]);
   const activeDraft = draft.taskId === task.id && draft.savedStatus === task.status && draft.savedPriority === task.priority
     ? draft

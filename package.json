@@ -1,10 +1,11 @@
 {
   "name": "projectsmanagerweb",
   "private": true,
-  "version": "0.0.0",
+  "version": "1.15.0",
   "type": "module",
   "scripts": {
     "dev": "vite",
+    "qa": "node scripts/qa-check.mjs",
     "build": "tsc -b && vite build",
     "lint": "eslint .",
     "auth:set-password": "node scripts/set-supabase-password.mjs",

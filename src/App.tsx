@@ -8,7 +8,6 @@ import { Stats } from './components/Stats';
 import { ProjectCard } from './components/ProjectCard';
 import { TaskRow } from './components/TaskRow';
 import { AddDialog } from './components/AddDialog';
-import { ProjectTimeline } from './components/ProjectTimeline';
 import { Auth } from './components/Auth';
 import { cn } from './lib/utils';
 
@@ -105,11 +104,12 @@ function ScopeView({ scope, setScope, session }: ScopeViewProps) {
   const doneTasksOrphan    = useMemo(() => tasks.filter(t => t.status === 'done' && !t.project_id), [tasks]);
   const frozenTasksCount   = useMemo(() => tasks.filter(t => t.status === 'frozen' && t.project_id).length, [tasks]);
 
-  const visibleProjects =
+  const visibleProjects = useMemo(() => (
     view === 'projects-done'   ? doneProjects :
     view === 'projects-frozen' ? frozenProjects :
     view === 'orphans' || view === 'orphans-done' ? [] :
-    activeProjects;
+    activeProjects
+  ), [activeProjects, doneProjects, frozenProjects, view]);
 
   const visibleTasks = (() => {
     const hide = (arr: Task[]) => hideDone ? arr.filter(t => t.status !== 'done') : arr;
@@ -131,12 +131,6 @@ function ScopeView({ scope, setScope, session }: ScopeViewProps) {
     if (!closed.length) return null;
     return closed.reduce((a, b) => (a.closed_at! > b.closed_at! ? a : b)).id;
   }, [tasks]);
-
-  const timelineProject = filterProjectId !== null ? projectsById.get(filterProjectId) : undefined;
-  const timelineTasks   = useMemo(
-    () => filterProjectId !== null ? sortedVisibleTasks.filter(t => t.project_id === filterProjectId) : [],
-    [filterProjectId, sortedVisibleTasks],
-  );
 
   return (
     <>
@@ -274,9 +268,6 @@ function ScopeView({ scope, setScope, session }: ScopeViewProps) {
                            onClick={() => view === 'projects' && setFilterProjectId(filterProjectId === p.id ? null : p.id)}
                            className={cn(view === 'projects' && 'cursor-pointer', filterProjectId === p.id && 'ring-1 ring-accent rounded-xl')}>
                         <ProjectCard project={p} scope={scope} progress={projectProgress.get(p.id) ?? { completed: 0, total: 0 }} fileCount={fileCounts.get(p.id) ?? 0} onChange={refreshAll} allowPermDelete={view === 'projects-frozen'} />
-                        {filterProjectId === p.id && timelineProject?.due_date && (
-                          <ProjectTimeline project={timelineProject} tasks={timelineTasks} />
-                        )}
                       </div>
                     ))}
                   </div>
@@ -350,11 +341,6 @@ function ScopeView({ scope, setScope, session }: ScopeViewProps) {
                 <X size={18} />
               </button>
             </div>
-            {timelineProject?.due_date && (
-              <div className="shrink-0">
-                <ProjectTimeline project={timelineProject} tasks={timelineTasks} />
-              </div>
-            )}
             <div className="overflow-y-auto flex-1 p-3 space-y-2">
               {sortedVisibleTasks.length === 0 && (
                 <div className="card p-6 text-center text-muted text-sm">אין משימות</div>

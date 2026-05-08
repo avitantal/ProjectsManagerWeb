@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { ExternalLink, FileText, Loader2, Plus, Trash2 } from 'lucide-react';
 import { supabase, type ProjectFile, type Scope } from '../lib/supabase';
 
@@ -38,7 +38,7 @@ export function ProjectFiles({ scope, projectId }: Props) {
   const [name, setName] = useState('');
   const [error, setError] = useState<string | null>(null);
 
-  async function refresh() {
+  const refresh = useCallback(async () => {
     setLoading(true);
     const { data } = await supabase
       .from('project_files')
@@ -48,11 +48,12 @@ export function ProjectFiles({ scope, projectId }: Props) {
       .order('uploaded_at', { ascending: false });
     setFiles((data ?? []) as ProjectFile[]);
     setLoading(false);
-  }
+  }, [projectId, scope]);
 
   useEffect(() => {
-    void refresh();
-  }, [scope, projectId]);
+    const timeout = window.setTimeout(() => { void refresh(); }, 0);
+    return () => window.clearTimeout(timeout);
+  }, [refresh]);
 
   async function addFile() {
     setError(null);

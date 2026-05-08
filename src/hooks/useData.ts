@@ -17,7 +17,8 @@ export function useFileCounts(scope: Scope) {
   }, [scope]);
 
   useEffect(() => {
-    void refresh();
+    const timeout = window.setTimeout(() => { void refresh(); }, 0);
+    return () => window.clearTimeout(timeout);
   }, [refresh]);
 
   return { counts, refresh };

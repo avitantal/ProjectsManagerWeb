@@ -12,6 +12,10 @@ dist
 dist-ssr
 *.local
 
+# Local QA run artifacts
+.qa/test-runs/*.md
+!.qa/test-runs/.gitkeep
+
 # Editor directories and files
 .vscode/*
 !.vscode/extensions.json
