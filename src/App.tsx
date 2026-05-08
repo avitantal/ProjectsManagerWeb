@@ -74,6 +74,7 @@ function ScopeView({ scope, setScope, session }: ScopeViewProps) {
   const [menuOpen, setMenuOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
   const syncedDoneProjectIds = useRef<Set<number>>(new Set());
+  const syncedReopenedProjectIds = useRef<Set<number>>(new Set());
 
   useEffect(() => {
     if (!menuOpen) return;
@@ -145,6 +146,43 @@ function ScopeView({ scope, setScope, session }: ScopeViewProps) {
       window.clearTimeout(timeout);
     };
   }, [projectsToAutoComplete, refreshProjects, scope]);
+
+  const projectsToAutoReopen = useMemo(
+    () => projects.filter((project) => {
+      if (project.status !== 'done') return false;
+      const progress = getProjectProgress(projectProgress, project.id);
+      return progress.total > 0 && !isProjectComplete(progress);
+    }),
+    [projectProgress, projects],
+  );
+
+  useEffect(() => {
+    const pendingProjects = projectsToAutoReopen.filter(project => !syncedReopenedProjectIds.current.has(project.id));
+    if (pendingProjects.length === 0) return;
+
+    pendingProjects.forEach(project => {
+      syncedReopenedProjectIds.current.add(project.id);
+      syncedDoneProjectIds.current.delete(project.id);
+    });
+    let cancelled = false;
+    const timeout = window.setTimeout(() => {
+      void Promise.all(
+        pendingProjects.map(project =>
+          supabase
+            .from(`${scope}_projects`)
+            .update({ status: 'in_progress', closed_at: null })
+            .eq('id', project.id),
+        ),
+      ).finally(() => {
+        if (!cancelled) refreshProjects();
+      });
+    }, 0);
+
+    return () => {
+      cancelled = true;
+      window.clearTimeout(timeout);
+    };
+  }, [projectsToAutoReopen, refreshProjects, scope]);
 
   const visibleProjects = useMemo(() => (
     view === 'projects-done'   ? doneProjects :
