@@ -113,7 +113,7 @@ function ScopeView({ scope, setScope, session }: ScopeViewProps) {
   const doneProjectIds = useMemo(() => new Set(doneProjects.map(p => p.id)), [doneProjects]);
   const activeProjectIds = useMemo(() => new Set(activeProjects.map(p => p.id)), [activeProjects]);
   const frozenProjectIds = useMemo(() => new Set(frozenProjects.map(p => p.id)), [frozenProjects]);
-  const activeProjectTasks = useMemo(() => tasks.filter(t => t.project_id && activeProjectIds.has(t.project_id)), [activeProjectIds, tasks]);
+  const activeProjectTasks = useMemo(() => tasks.filter(t => t.project_id && activeProjectIds.has(t.project_id) && t.status !== 'frozen'), [activeProjectIds, tasks]);
   const doneProjectTasks  = useMemo(() => tasks.filter(t => t.project_id && doneProjectIds.has(t.project_id)), [doneProjectIds, tasks]);
   const frozenProjectTasks = useMemo(() => tasks.filter(t => t.project_id && frozenProjectIds.has(t.project_id)), [frozenProjectIds, tasks]);
   const doneTasksOrphan    = useMemo(() => tasks.filter(t => t.status === 'done' && !t.project_id), [tasks]);
@@ -236,7 +236,7 @@ function ScopeView({ scope, setScope, session }: ScopeViewProps) {
               title={session.user.email ?? ''}
             >
               🎯 ניהול פרויקטים
-              <span className="text-[10px] font-normal text-muted/70" dir="ltr">V1.23</span>
+              <span className="text-[10px] font-normal text-muted/70" dir="ltr">V1.24</span>
             </button>
             {menuOpen && (
               <div className="absolute top-full right-0 mt-1 min-w-[160px] card p-1 z-50 shadow-lg" role="menu">

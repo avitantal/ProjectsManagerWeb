@@ -104,6 +104,7 @@ export function ProjectCard({ project, scope, progress, fileCount, onChange, all
   }
 
   return (
+    <>
     <div className="relative overflow-hidden rounded-xl" {...swipeHandlers}>
       <div
         className="absolute inset-y-0 left-0 right-0 flex items-center justify-end px-5 bg-red-600 rounded-xl pointer-events-none"
@@ -234,20 +235,19 @@ export function ProjectCard({ project, scope, progress, fileCount, onChange, all
         </>
       )}
 
-      {editing && (
-        <div onClick={(e) => e.stopPropagation()}>
-          <AddDialog
-            scope={scope}
-            type="project"
-            projects={[]}
-            editing={project}
-            onClose={() => setEditing(false)}
-            onSaved={onChange}
-          />
-        </div>
-      )}
     </div>
       </div>
     </div>
+    {editing && (
+      <AddDialog
+        scope={scope}
+        type="project"
+        projects={[]}
+        editing={project}
+        onClose={() => setEditing(false)}
+        onSaved={onChange}
+      />
+    )}
+    </>
   );
 }
