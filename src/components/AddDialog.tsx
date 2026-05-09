@@ -81,7 +81,7 @@ export function AddDialog({ scope, type, projects, defaultProjectId, editing, on
 
   return (
     <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4" onClick={onClose}>
-      <div className="card w-full max-w-md p-6" onClick={(e) => e.stopPropagation()}>
+      <div className="card w-full max-w-md p-6 max-h-[90vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
         <div className="flex items-center justify-between mb-5">
           <h2 className="text-lg font-semibold">{heading}</h2>
           <button onClick={onClose} className="text-muted hover:text-text"><X size={20} /></button>

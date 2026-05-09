@@ -1,4 +1,4 @@
-import { DndContext, DragEndEvent, PointerSensor, useSensor, useSensors, closestCenter } from '@dnd-kit/core';
+import { DndContext, type DragEndEvent, PointerSensor, useSensor, useSensors, closestCenter } from '@dnd-kit/core';
 import { SortableContext, useSortable, verticalListSortingStrategy, arrayMove } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 import type { Task, Project, Scope } from '../lib/supabase';
@@ -30,8 +30,8 @@ function SortableItem({ task, ...props }: SortableItemProps) {
       <TaskRow
         {...props}
         task={task}
-        dragHandleListeners={listeners as Record<string, unknown>}
-        dragHandleAttributes={attributes as Record<string, unknown>}
+        dragHandleListeners={listeners as unknown as Record<string, unknown>}
+        dragHandleAttributes={attributes as unknown as Record<string, unknown>}
       />
     </div>
   );

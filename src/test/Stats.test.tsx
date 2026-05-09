@@ -27,6 +27,7 @@ function task(id: number, projectId: number | null, status: Task['status'], prio
     due_date: null,
     notes: null,
     is_suggested: false,
+    sort_order: null,
     created_at: '2025-01-01T00:00:00Z',
     updated_at: '2025-01-01T00:00:00Z',
     closed_at: status === 'done' ? '2025-01-02T00:00:00Z' : null,
