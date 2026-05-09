@@ -112,15 +112,19 @@ export function ProjectCard({ project, scope, progress, fileCount, onChange, all
         <Trash2 size={20} className="text-white" />
       </div>
       <div style={{ transform: `translateX(-${swipeX}px)`, transition: swipeX === 0 ? 'transform 0.2s ease' : 'none' }}>
-    <div className="card p-4 hover:border-zinc-600 transition-colors group">
-      <div className="flex items-start justify-between gap-2 mb-2">
-        <h3 className="font-medium text-text leading-tight">{project.name}</h3>
+    <div className="card p-2.5 hover:border-zinc-600 transition-colors group relative overflow-hidden">
+      <div
+        className="absolute inset-y-0 right-0 bg-accent/8 rounded-xl transition-all duration-500 pointer-events-none"
+        style={{ width: `${progressPercent}%` }}
+      />
+      <div className="relative flex items-start justify-between gap-2 mb-1.5">
+        <h3 className="font-medium text-text leading-tight text-sm">{project.name}</h3>
         {confirmingDelete ? (
           <div className="flex items-center gap-1 shrink-0" onClick={(e) => e.stopPropagation()}>
-            <button type="button" onClick={() => void remove()} className="rounded-md bg-red-500/20 px-2 py-1 text-xs text-red-200 hover:bg-red-500/30">
+            <button type="button" onClick={() => void remove()} className="rounded-md bg-red-500/20 px-1.5 py-0.5 text-[11px] text-red-200 hover:bg-red-500/30">
               {allowPermDelete ? 'מחק לצמיתות' : 'מחק'}
             </button>
-            <button type="button" onClick={() => setConfirmingDeleteId(null)} className="rounded-md px-2 py-1 text-xs text-muted hover:bg-surface hover:text-text">
+            <button type="button" onClick={() => setConfirmingDeleteId(null)} className="rounded-md px-1.5 py-0.5 text-[11px] text-muted hover:bg-surface hover:text-text">
               בטל
             </button>
           </div>
@@ -133,7 +137,7 @@ export function ProjectCard({ project, scope, progress, fileCount, onChange, all
               aria-label="שחזר"
               title="שחזר לפעילים"
             >
-              <RotateCcw size={16} />
+              <RotateCcw size={13} />
             </button>
             <button
               type="button"
@@ -142,7 +146,7 @@ export function ProjectCard({ project, scope, progress, fileCount, onChange, all
               aria-label="מחק לצמיתות"
               title="מחק לצמיתות"
             >
-              <Trash2 size={16} />
+              <Trash2 size={13} />
             </button>
           </div>
         ) : (
@@ -153,7 +157,7 @@ export function ProjectCard({ project, scope, progress, fileCount, onChange, all
               className="text-muted hover:text-accent"
               aria-label="ערוך"
             >
-              <Pencil size={16} />
+              <Pencil size={13} />
             </button>
             <button
               type="button"
@@ -161,20 +165,20 @@ export function ProjectCard({ project, scope, progress, fileCount, onChange, all
               className="text-muted hover:text-red-400"
               aria-label="מחק"
             >
-              <Trash2 size={16} />
+              <Trash2 size={13} />
             </button>
           </div>
         )}
       </div>
       {project.description && (
-        <p className="text-sm text-muted mb-3 leading-relaxed">{project.description}</p>
+        <p className="text-xs text-muted mb-1.5 leading-relaxed">{project.description}</p>
       )}
-      <div className="flex flex-wrap items-center gap-2 mb-3">
+      <div className="relative flex flex-wrap items-center gap-1.5 mb-1.5">
         <div className="flex flex-wrap items-center gap-1" onClick={(e) => e.stopPropagation()}>
           <select
             value={draftStatus}
             onChange={(e) => updateDraftStatus(e.target.value as ProjectStatus)}
-            className={`chip ${PROJECT_STATUS_COLOR[draftStatus]} bg-transparent border-0 cursor-pointer`}
+            className={`chip ${PROJECT_STATUS_COLOR[draftStatus]} bg-transparent border-0 cursor-pointer text-[11px] py-0`}
           >
             {Object.entries(PROJECT_STATUS_HE).map(([k, v]) => (
               <option key={k} value={k} className="bg-surface text-text">{v}</option>
@@ -188,28 +192,10 @@ export function ProjectCard({ project, scope, progress, fileCount, onChange, all
             />
           )}
         </div>
-        <span className={`chip ${PRIORITY_COLOR[project.priority]}`}>{PRIORITY_HE[project.priority]}</span>
-      </div>
-      <div className="mb-3">
-        <div className="mb-1 flex items-center justify-between text-xs text-muted">
-          <span>התקדמות</span>
-          <span>{progressPercent}%</span>
-        </div>
-        <div className="h-2 overflow-hidden rounded-full border border-border bg-bg">
-          <div
-            className="h-full rounded-full bg-accent transition-all"
-            style={{ width: `${progressPercent}%` }}
-          />
-        </div>
-        <div className="mt-1 text-xs text-muted">
-          {progress.total > 0 ? `${progress.completed}/${progress.total} משימות הושלמו` : 'אין משימות בפרויקט'}
-        </div>
-      </div>
-      <div className="flex items-center justify-between text-xs text-muted">
-        <span>{progress.total} משימות</span>
+        <span className={`chip ${PRIORITY_COLOR[project.priority]} text-[11px] py-0`}>{PRIORITY_HE[project.priority]}</span>
         {project.due_date && (
-          <span className={`flex items-center gap-1 ${overdue ? 'text-red-400' : ''}`}>
-            <Calendar size={12} />
+          <span className={`flex items-center gap-1 text-[11px] ${overdue ? 'text-red-400' : 'text-muted'}`}>
+            <Calendar size={11} />
             {formatDate(project.due_date)}
             {days !== null && (
               <span className="opacity-75">
@@ -219,11 +205,16 @@ export function ProjectCard({ project, scope, progress, fileCount, onChange, all
           </span>
         )}
       </div>
-
-      <div className="mt-2 text-[10px] text-purple-400/70 flex flex-wrap gap-x-2">
-        <span>נפתח {formatDateTime(project.created_at)}</span>
-        {project.closed_at && <span>· נסגר {formatDateTime(project.closed_at)}</span>}
-        <span>· ⏱ {formatLifetime(project.created_at, project.closed_at)}</span>
+      <div className="relative flex items-center justify-between text-[10px] text-muted gap-2">
+        <span className="shrink-0">
+          {progress.total > 0 ? `${progress.completed} מתוך ${progress.total} משימות` : 'אין משימות'}
+          {progress.total > 0 && <span className="opacity-60 mr-1">({progressPercent}%)</span>}
+        </span>
+        <span className="text-purple-400/60 flex flex-wrap gap-x-1.5 justify-end">
+          <span>נפתח {formatDateTime(project.created_at)}</span>
+          {project.closed_at && <span>· נסגר {formatDateTime(project.closed_at)}</span>}
+          <span>· ⏱ {formatLifetime(project.created_at, project.closed_at)}</span>
+        </span>
       </div>
 
       {fileCount > 0 && (
@@ -231,7 +222,7 @@ export function ProjectCard({ project, scope, progress, fileCount, onChange, all
           <button
             type="button"
             onClick={(e) => { e.stopPropagation(); setShowFiles((v) => !v); }}
-            className="mt-3 inline-flex items-center gap-1 text-xs text-muted hover:text-text"
+            className="mt-1.5 inline-flex items-center gap-1 text-[11px] text-muted hover:text-text"
           >
             <Paperclip size={12} />
             קבצים ({fileCount})
