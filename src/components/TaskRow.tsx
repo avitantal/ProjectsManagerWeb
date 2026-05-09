@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useSwipeable } from 'react-swipeable';
-import { Check, Pencil, RotateCcw, Sparkles, Trash2, NotebookPen } from 'lucide-react';
+import { Check, GripVertical, Pencil, RotateCcw, Sparkles, Trash2, NotebookPen } from 'lucide-react';
 import {
   type Task,
   type TaskStatus,
@@ -34,9 +34,11 @@ interface Props {
   isSelected?: boolean;
   onSelect?: () => void;
   isLastClosed?: boolean;
+  dragHandleListeners?: Record<string, unknown>;
+  dragHandleAttributes?: Record<string, unknown>;
 }
 
-export function TaskRow({ task, project, projects, scope, onChange, isSelected, onSelect, isLastClosed }: Props) {
+export function TaskRow({ task, project, projects, scope, onChange, isSelected, onSelect, isLastClosed, dragHandleListeners, dragHandleAttributes }: Props) {
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState<TaskDraft>(() => ({
     taskId: task.id,
@@ -164,6 +166,18 @@ export function TaskRow({ task, project, projects, scope, onChange, isSelected, 
       onClick={() => onSelect?.()}
     >
       <div className="flex min-w-0 flex-1 items-center gap-3 sm:flex-row">
+        {dragHandleListeners && (
+          <button
+            type="button"
+            {...dragHandleListeners}
+            {...dragHandleAttributes}
+            className="text-muted/30 hover:text-muted/70 cursor-grab active:cursor-grabbing touch-none shrink-0 -ml-1"
+            aria-label="גרור לסידור"
+            onClick={e => e.stopPropagation()}
+          >
+            <GripVertical size={14} />
+          </button>
+        )}
         <input
           type="checkbox"
           onClick={e => e.stopPropagation()}

@@ -33,6 +33,7 @@ export interface Task {
   due_date: string | null;
   notes: string | null;
   is_suggested: boolean;
+  sort_order: number | null;
   created_at: string;
   updated_at: string;
   closed_at: string | null;

@@ -7,16 +7,18 @@ import { supabase, type Scope, type Task, type Project } from './lib/supabase';
 import { Stats } from './components/Stats';
 import { ProjectCard } from './components/ProjectCard';
 import { TaskRow } from './components/TaskRow';
+import { SortableTaskList } from './components/SortableTaskList';
 import { AddDialog } from './components/AddDialog';
 import { Auth } from './components/Auth';
 import { cn } from './lib/utils';
 import { buildProjectProgress, getProjectProgress, isProjectActive, isProjectComplete, isProjectDone } from './lib/projectProgress';
 
-type TaskSort    = 'priority' | 'newest' | 'oldest' | 'due_asc';
+type TaskSort    = 'priority' | 'newest' | 'oldest' | 'due_asc' | 'manual';
 type ProjectSort = 'priority' | 'newest' | 'oldest' | 'due_asc';
 
 function sortedTasks(tasks: Task[], sort: TaskSort) {
   return [...tasks].sort((a, b) => {
+    if (sort === 'manual') return (a.sort_order ?? a.id) - (b.sort_order ?? b.id);
     if (sort === 'newest') return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
     if (sort === 'oldest') return new Date(a.created_at).getTime() - new Date(b.created_at).getTime();
     if (sort === 'due_asc') {
@@ -86,6 +88,16 @@ function ScopeView({ scope, setScope, session }: ScopeViewProps) {
   }, [menuOpen]);
 
   function refreshAll() { refreshProjects(); refreshTasks(); refreshFileCounts(); }
+
+  async function handleTasksReorder(reordered: Task[]) {
+    await Promise.all(
+      reordered.map((task, index) =>
+        supabase.from(`${scope}_tasks`).update({ sort_order: index }).eq('id', task.id),
+      ),
+    );
+    setTaskSort('manual');
+    refreshTasks();
+  }
 
   const projectProgress = useMemo(() => buildProjectProgress(tasks), [tasks]);
 
@@ -225,7 +237,7 @@ function ScopeView({ scope, setScope, session }: ScopeViewProps) {
               title={session.user.email ?? ''}
             >
               🎯 ניהול פרויקטים
-              <span className="text-[10px] font-normal text-muted/70" dir="ltr">V1.16</span>
+              <span className="text-[10px] font-normal text-muted/70" dir="ltr">V1.17</span>
             </button>
             {menuOpen && (
               <div className="absolute top-full right-0 mt-1 min-w-[160px] card p-1 z-50 shadow-lg" role="menu">
@@ -378,6 +390,7 @@ function ScopeView({ scope, setScope, session }: ScopeViewProps) {
                         <option value="newest">חדש ראשון</option>
                         <option value="oldest">ישן ראשון</option>
                         <option value="due_asc">קרוב לסיום</option>
+                        <option value="manual">ידני</option>
                       </select>
                       {isActive && (
                         <button onClick={() => setShowAdd('task')} disabled={view === 'projects' && activeProjects.length === 0} className="btn-primary text-xs disabled:opacity-50">
@@ -386,24 +399,17 @@ function ScopeView({ scope, setScope, session }: ScopeViewProps) {
                       )}
                     </div>
                   </div>
-                  <div className="space-y-2">
-                    {sortedVisibleTasks.length === 0 && (
-                      <div className="card p-6 text-center text-muted text-sm">אין משימות</div>
-                    )}
-                    {sortedVisibleTasks.map(t => (
-                      <TaskRow
-                        key={t.id}
-                        task={t}
-                        project={t.project_id ? projectsById.get(t.project_id) : undefined}
-                        projects={projects}
-                        scope={scope}
-                        onChange={refreshAll}
-                        isSelected={selectedTaskId === t.id}
-                        onSelect={() => setSelectedTaskId(selectedTaskId === t.id ? null : t.id)}
-                        isLastClosed={t.id === lastClosedTaskId}
-                      />
-                    ))}
-                  </div>
+                  <SortableTaskList
+                    tasks={sortedVisibleTasks}
+                    projects={projects}
+                    scope={scope}
+                    onChange={refreshAll}
+                    onReorder={reordered => void handleTasksReorder(reordered)}
+                    selectedTaskId={selectedTaskId}
+                    onSelect={id => setSelectedTaskId(id)}
+                    lastClosedTaskId={lastClosedTaskId}
+                    projectsById={projectsById}
+                  />
                 </section>
               )}
             </div>
@@ -421,23 +427,18 @@ function ScopeView({ scope, setScope, session }: ScopeViewProps) {
                 <X size={18} />
               </button>
             </div>
-            <div className="overflow-y-auto flex-1 p-3 space-y-2">
-              {sortedVisibleTasks.length === 0 && (
-                <div className="card p-6 text-center text-muted text-sm">אין משימות</div>
-              )}
-              {sortedVisibleTasks.map(t => (
-                <TaskRow
-                  key={t.id}
-                  task={t}
-                  project={t.project_id ? projectsById.get(t.project_id) : undefined}
-                  projects={projects}
-                  scope={scope}
-                  onChange={refreshAll}
-                  isSelected={selectedTaskId === t.id}
-                  onSelect={() => setSelectedTaskId(selectedTaskId === t.id ? null : t.id)}
-                  isLastClosed={t.id === lastClosedTaskId}
-                />
-              ))}
+            <div className="overflow-y-auto flex-1 p-3">
+              <SortableTaskList
+                tasks={sortedVisibleTasks}
+                projects={projects}
+                scope={scope}
+                onChange={refreshAll}
+                onReorder={reordered => void handleTasksReorder(reordered)}
+                selectedTaskId={selectedTaskId}
+                onSelect={id => setSelectedTaskId(id)}
+                lastClosedTaskId={lastClosedTaskId}
+                projectsById={projectsById}
+              />
             </div>
             <div className="p-3 border-t border-border shrink-0">
               <button onClick={() => setShowAdd('task')} className="btn-primary text-sm w-full justify-center">
