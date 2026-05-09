@@ -80,58 +80,60 @@ export function AddDialog({ scope, type, projects, defaultProjectId, editing, on
     : (type === 'project' ? 'פרויקט חדש' : 'משימה חדשה');
 
   return (
-    <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4" onClick={onClose}>
-      <div className="card w-full max-w-md p-6 max-h-[90vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
-        <div className="flex items-center justify-between mb-5">
+    <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-end sm:items-center justify-center sm:p-4" onClick={onClose}>
+      <div className="w-full sm:max-w-md bg-bg border border-border rounded-t-2xl sm:rounded-xl max-h-[92vh] flex flex-col" onClick={(e) => e.stopPropagation()}>
+        <div className="flex items-center justify-between px-6 py-4 border-b border-border shrink-0">
           <h2 className="text-lg font-semibold">{heading}</h2>
           <button onClick={onClose} className="text-muted hover:text-text"><X size={20} /></button>
         </div>
-        <form onSubmit={submit} className="space-y-4">
-          <div>
-            <label className="block text-xs text-muted mb-1">{type === 'project' ? 'שם הפרויקט' : 'שם המשימה'}</label>
-            <input className="input" value={name} onChange={(e) => setName(e.target.value)} autoFocus required />
-          </div>
-
-          {type === 'task' && (
+        <form onSubmit={submit} className="flex flex-col flex-1 overflow-y-auto">
+          <div className="space-y-4 p-6">
             <div>
-              <label className="block text-xs text-muted mb-1">פרויקט</label>
-              <select className="input" value={projectId ?? ''} onChange={(e) => setProjectId(e.target.value ? Number(e.target.value) : null)}>
-                <option value="">ללא פרויקט</option>
-                {projects.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
-              </select>
+              <label className="block text-xs text-muted mb-1">{type === 'project' ? 'שם הפרויקט' : 'שם המשימה'}</label>
+              <input className="input" value={name} onChange={(e) => setName(e.target.value)} autoFocus required />
             </div>
-          )}
 
-          <div className="grid grid-cols-2 gap-3">
+            {type === 'task' && (
+              <div>
+                <label className="block text-xs text-muted mb-1">פרויקט</label>
+                <select className="input" value={projectId ?? ''} onChange={(e) => setProjectId(e.target.value ? Number(e.target.value) : null)}>
+                  <option value="">ללא פרויקט</option>
+                  {projects.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
+                </select>
+              </div>
+            )}
+
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className="block text-xs text-muted mb-1">סטטוס</label>
+                <select className="input" value={status} onChange={(e) => setStatus(e.target.value)}>
+                  {Object.entries(type === 'project' ? PROJECT_STATUS_HE : TASK_STATUS_HE).filter(([k]) => type === 'project' || k !== 'frozen').map(([k, v]) => (
+                    <option key={k} value={k}>{v}</option>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <label className="block text-xs text-muted mb-1">עדיפות</label>
+                <select className="input" value={priority} onChange={(e) => setPriority(e.target.value)}>
+                  {Object.entries(type === 'project' ? PRIORITY_HE : TASK_PRIORITY_HE).map(([k, v]) => (
+                    <option key={k} value={k}>{v}</option>
+                  ))}
+                </select>
+              </div>
+            </div>
+
             <div>
-              <label className="block text-xs text-muted mb-1">סטטוס</label>
-              <select className="input" value={status} onChange={(e) => setStatus(e.target.value)}>
-                {Object.entries(type === 'project' ? PROJECT_STATUS_HE : TASK_STATUS_HE).filter(([k]) => type === 'project' || k !== 'frozen').map(([k, v]) => (
-                  <option key={k} value={k}>{v}</option>
-                ))}
-              </select>
+              <label className="block text-xs text-muted mb-1">תאריך יעד</label>
+              <input type="date" className="input" value={dueDate} onChange={(e) => setDueDate(e.target.value)} />
             </div>
+
             <div>
-              <label className="block text-xs text-muted mb-1">עדיפות</label>
-              <select className="input" value={priority} onChange={(e) => setPriority(e.target.value)}>
-                {Object.entries(type === 'project' ? PRIORITY_HE : TASK_PRIORITY_HE).map(([k, v]) => (
-                  <option key={k} value={k}>{v}</option>
-                ))}
-              </select>
+              <label className="block text-xs text-muted mb-1">{type === 'project' ? 'תיאור' : 'הערות'}</label>
+              <textarea className="input min-h-[80px]" value={text} onChange={(e) => setText(e.target.value)} />
             </div>
           </div>
 
-          <div>
-            <label className="block text-xs text-muted mb-1">תאריך יעד</label>
-            <input type="date" className="input" value={dueDate} onChange={(e) => setDueDate(e.target.value)} />
-          </div>
-
-          <div>
-            <label className="block text-xs text-muted mb-1">{type === 'project' ? 'תיאור' : 'הערות'}</label>
-            <textarea className="input min-h-[80px]" value={text} onChange={(e) => setText(e.target.value)} />
-          </div>
-
-          <div className="flex gap-2 justify-end pt-2">
+          <div className="flex gap-2 justify-end px-6 py-4 border-t border-border shrink-0">
             <button type="button" onClick={onClose} className="btn-ghost">ביטול</button>
             <button type="submit" disabled={saving || !name.trim()} className="btn-primary disabled:opacity-50">
               {saving ? 'שומר...' : editMode ? 'עדכן' : 'שמור'}
