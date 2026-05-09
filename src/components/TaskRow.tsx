@@ -149,6 +149,7 @@ export function TaskRow({ task, project, projects, scope, onChange, isSelected, 
   const suggested = task.is_suggested;
 
   return (
+    <>
     <div className="relative overflow-hidden rounded-xl" {...swipeHandlers}>
       <div
         className="absolute inset-y-0 left-0 right-0 flex items-center justify-end px-4 bg-red-600 rounded-xl pointer-events-none"
@@ -321,18 +322,19 @@ export function TaskRow({ task, project, projects, scope, onChange, isSelected, 
         </div>
       )}
 
-      {editing && (
-        <AddDialog
-          scope={scope}
-          type="task"
-          projects={projects}
-          editing={task}
-          onClose={() => setEditing(false)}
-          onSaved={onChange}
-        />
-      )}
     </div>
       </div>
     </div>
+    {editing && (
+      <AddDialog
+        scope={scope}
+        type="task"
+        projects={projects}
+        editing={task}
+        onClose={() => setEditing(false)}
+        onSaved={onChange}
+      />
+    )}
+    </>
   );
 }
