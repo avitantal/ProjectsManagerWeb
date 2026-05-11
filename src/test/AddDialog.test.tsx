@@ -72,7 +72,7 @@ describe('AddDialog — task', () => {
   });
 
   it('shows "עריכת משימה" heading when editing', () => {
-    const task = { id: 1, project_id: null, name: 'משימה', status: 'todo' as const, priority: 'normal' as const, due_date: null, notes: null, is_suggested: false, sort_order: null, created_at: '', updated_at: '', closed_at: null };
+    const task = { id: 1, project_id: null, name: 'משימה', status: 'todo' as const, priority: 'normal' as const, due_date: null, due_time: null, notes: null, is_suggested: false, sort_order: null, created_at: '', updated_at: '', closed_at: null };
     render(<AddDialog {...defaultProps} type="task" editing={task} />);
     expect(screen.getByText('עריכת משימה')).toBeInTheDocument();
   });

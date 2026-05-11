@@ -31,6 +31,7 @@ export function AddDialog({ scope, type, projects, defaultProjectId, editing, on
   const [status, setStatus] = useState<string>(editing?.status ?? (type === 'project' ? 'planned' : 'todo'));
   const [priority, setPriority] = useState<string>(editing?.priority ?? (type === 'project' ? 'medium' : 'normal'));
   const [dueDate, setDueDate] = useState(editing?.due_date ?? '');
+  const [dueTime, setDueTime] = useState(isTask(editing) ? (editing.due_time ?? '') : '');
   const [text, setText] = useState(editingProject?.description ?? editingTask?.notes ?? '');
   const [projectId, setProjectId] = useState<number | null>(
     editMode ? (editingTask?.project_id ?? null) : (defaultProjectId ?? null),
@@ -66,6 +67,9 @@ export function AddDialog({ scope, type, projects, defaultProjectId, editing, on
       priority,
       due_date: dueDate || null,
     };
+    if (type === 'task') {
+      payload.due_time = (dueDate && dueTime) ? dueTime : null;
+    }
     if (type === 'project') {
       payload.description = text || null;
       payload.sync_to_calendar = syncToCalendar;
@@ -169,7 +173,18 @@ export function AddDialog({ scope, type, projects, defaultProjectId, editing, on
 
             <div>
               <label className="block text-xs text-muted mb-1">תאריך יעד</label>
-              <input type="date" className="input" value={dueDate} onChange={(e) => setDueDate(e.target.value)} />
+              <div className="flex gap-2">
+                <input type="date" className="input flex-1" value={dueDate} onChange={(e) => setDueDate(e.target.value)} />
+                {type === 'task' && dueDate && (
+                  <input
+                    type="time"
+                    className="input w-32"
+                    value={dueTime}
+                    onChange={(e) => setDueTime(e.target.value)}
+                    title="שעת יעד (אופציונלי)"
+                  />
+                )}
+              </div>
               {type === 'task' && calendarToken && dueDate && (
                 <label className="flex items-center gap-2 mt-1.5 cursor-pointer w-fit">
                   <input

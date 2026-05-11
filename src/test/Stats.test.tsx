@@ -25,6 +25,7 @@ function task(id: number, projectId: number | null, status: Task['status'], prio
     status,
     priority,
     due_date: null,
+    due_time: null,
     notes: null,
     is_suggested: false,
     sort_order: null,

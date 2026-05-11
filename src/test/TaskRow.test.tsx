@@ -24,6 +24,7 @@ const baseTask: Task = {
   status: 'todo',
   priority: 'normal',
   due_date: null,
+  due_time: null,
   notes: null,
   is_suggested: false,
   sort_order: null,

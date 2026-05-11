@@ -47,11 +47,10 @@ export async function createCalendar(token: string, name: string): Promise<strin
   return data.id as string;
 }
 
+const TZ = 'Asia/Jerusalem';
+
 function buildEventPayload(task: Task, reminders: number[], projectName?: string | null) {
   const date = task.due_date!;
-  const nextDay = new Date(date);
-  nextDay.setDate(nextDay.getDate() + 1);
-  const endDate = nextDay.toISOString().slice(0, 10);
 
   const description = [
     `📋 ${task.name}`,
@@ -70,11 +69,32 @@ function buildEventPayload(task: Task, reminders: number[], projectName?: string
     ? `${PRIORITY_EMOJI[task.priority]} ${task.name} · ${projectName}`
     : `${PRIORITY_EMOJI[task.priority]} ${task.name}`;
 
+  let startSpec: Record<string, string>;
+  let endSpec: Record<string, string>;
+
+  if (task.due_time) {
+    // timed event: 1-hour block
+    const startDateTime = `${date}T${task.due_time}:00`;
+    const [h, m] = task.due_time.split(':').map(Number);
+    const endH = String(h + 1).padStart(2, '0');
+    const endM = String(m).padStart(2, '0');
+    const endDateTime = `${date}T${endH}:${endM}:00`;
+    startSpec = { dateTime: startDateTime, timeZone: TZ };
+    endSpec   = { dateTime: endDateTime,   timeZone: TZ };
+  } else {
+    // all-day event
+    const nextDay = new Date(date);
+    nextDay.setDate(nextDay.getDate() + 1);
+    const endDate = nextDay.toISOString().slice(0, 10);
+    startSpec = { date };
+    endSpec   = { date: endDate };
+  }
+
   return {
     summary,
     description,
-    start: { date },
-    end: { date: endDate },
+    start: startSpec,
+    end: endSpec,
     source: {
       title: 'ProjectsManager',
       url: 'https://avitantal.github.io/ProjectsManagerWeb',

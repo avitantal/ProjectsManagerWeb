@@ -1,6 +1,6 @@
 import { useState, useMemo, useEffect, useRef } from 'react';
 import type { Session } from '@supabase/supabase-js';
-import { CalendarCog, Plus, RefreshCw, Factory, House, LogOut, Loader2, FolderKanban, ListTodo, CheckCircle2, Archive, X } from 'lucide-react';
+import { CalendarCog, CalendarX2, Plus, RefreshCw, Factory, House, LogOut, Loader2, FolderKanban, ListTodo, CheckCircle2, Archive, X } from 'lucide-react';
 import { useProjects, useTasks, useFileCounts } from './hooks/useData';
 import { useAuth } from './hooks/useAuth';
 import { useCalendarSync } from './hooks/useCalendarSync';
@@ -241,7 +241,7 @@ function ScopeView({ scope, setScope, session }: ScopeViewProps) {
               title={session.user.email ?? ''}
             >
               🎯 ניהול פרויקטים
-              <span className="text-[10px] font-normal text-muted/70" dir="ltr">V1.29</span>
+              <span className="text-[10px] font-normal text-muted/70" dir="ltr">V1.30</span>
             </button>
             {menuOpen && (
               <div className="absolute top-full right-0 mt-1 min-w-[160px] card p-1 z-50 shadow-lg" role="menu">
@@ -271,19 +271,38 @@ function ScopeView({ scope, setScope, session }: ScopeViewProps) {
               </div>
             )}
           </div>
-          <div className="flex bg-surface rounded-lg p-1 border border-border">
-            <button
-              onClick={() => setScope('factory')}
-              className={cn('btn text-sm px-3 py-1.5', scope === 'factory' ? 'bg-accent text-white' : 'text-muted hover:text-text')}
-            >
-              <Factory size={14} /> עבודה
-            </button>
-            <button
-              onClick={() => setScope('personal')}
-              className={cn('btn text-sm px-3 py-1.5', scope === 'personal' ? 'bg-accent text-white' : 'text-muted hover:text-text')}
-            >
-              <House size={14} /> אישי
-            </button>
+          <div className="flex items-center gap-2">
+            {!isCalendarReady && session.user.app_metadata?.provider === 'google' && (
+              <button
+                onClick={() => void supabase.auth.signInWithOAuth({
+                  provider: 'google',
+                  options: {
+                    scopes: 'https://www.googleapis.com/auth/calendar',
+                    redirectTo: window.location.href,
+                    queryParams: { access_type: 'offline', prompt: 'consent' },
+                  },
+                })}
+                className="btn text-xs px-2.5 py-1.5 border border-amber-500/40 text-amber-400 hover:bg-amber-500/10 gap-1.5 shrink-0"
+                title="חבר מחדש לסנכרון עם Google Calendar"
+              >
+                <CalendarX2 size={13} />
+                <span className="hidden sm:inline">התחבר לקלנדר</span>
+              </button>
+            )}
+            <div className="flex bg-surface rounded-lg p-1 border border-border">
+              <button
+                onClick={() => setScope('factory')}
+                className={cn('btn text-sm px-3 py-1.5', scope === 'factory' ? 'bg-accent text-white' : 'text-muted hover:text-text')}
+              >
+                <Factory size={14} /> עבודה
+              </button>
+              <button
+                onClick={() => setScope('personal')}
+                className={cn('btn text-sm px-3 py-1.5', scope === 'personal' ? 'bg-accent text-white' : 'text-muted hover:text-text')}
+              >
+                <House size={14} /> אישי
+              </button>
+            </div>
           </div>
         </div>
         <div className="max-w-7xl mx-auto px-4 pb-2 border-t border-border/50">
@@ -455,6 +474,7 @@ function ScopeView({ scope, setScope, session }: ScopeViewProps) {
                 lastClosedTaskId={lastClosedTaskId}
                 projectsById={projectsById}
                 onBeforeDelete={task => removeTaskEvent(task, scope, projects)}
+                onTaskSaved={async task => { await syncTask(task, scope, projects); }}
                 calendarToken={calendarToken}
               />
             </div>

@@ -39,6 +39,7 @@ export interface Task {
   status: TaskStatus;
   priority: TaskPriority;
   due_date: string | null;
+  due_time: string | null;
   notes: string | null;
   is_suggested: boolean;
   sort_order: number | null;
