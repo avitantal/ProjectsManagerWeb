@@ -47,7 +47,7 @@ export async function createCalendar(token: string, name: string): Promise<strin
   return data.id as string;
 }
 
-function buildEventPayload(task: Task, reminders: number[]) {
+function buildEventPayload(task: Task, reminders: number[], projectName?: string | null) {
   const date = task.due_date!;
   const nextDay = new Date(date);
   nextDay.setDate(nextDay.getDate() + 1);
@@ -55,6 +55,7 @@ function buildEventPayload(task: Task, reminders: number[]) {
 
   const description = [
     `📋 ${task.name}`,
+    projectName ? `📁 ${projectName}` : '',
     '─────────────────',
     `עדיפות: ${TASK_PRIORITY_HE[task.priority]}`,
     `סטטוס:  ${TASK_STATUS_HE[task.status]}`,
@@ -63,10 +64,14 @@ function buildEventPayload(task: Task, reminders: number[]) {
     '─────────────────',
     '✦ נוצר על ידי ProjectsManager',
     'https://avitantal.github.io/ProjectsManagerWeb',
-  ].filter(l => l !== null).join('\n');
+  ].filter(l => l !== '').join('\n');
+
+  const summary = projectName
+    ? `${PRIORITY_EMOJI[task.priority]} ${task.name} · ${projectName}`
+    : `${PRIORITY_EMOJI[task.priority]} ${task.name}`;
 
   return {
-    summary: `${PRIORITY_EMOJI[task.priority]} ${task.name}`,
+    summary,
     description,
     start: { date },
     end: { date: endDate },
@@ -86,11 +91,12 @@ export async function createEvent(
   calendarId: string,
   task: Task,
   reminders: number[],
+  projectName?: string | null,
 ): Promise<string> {
   const data = await gcalFetch(
     token,
     `/calendars/${encodeURIComponent(calendarId)}/events`,
-    { method: 'POST', body: JSON.stringify(buildEventPayload(task, reminders)) },
+    { method: 'POST', body: JSON.stringify(buildEventPayload(task, reminders, projectName)) },
   );
   return data.id as string;
 }
@@ -101,11 +107,12 @@ export async function updateEvent(
   eventId: string,
   task: Task,
   reminders: number[],
+  projectName?: string | null,
 ): Promise<void> {
   await gcalFetch(
     token,
     `/calendars/${encodeURIComponent(calendarId)}/events/${encodeURIComponent(eventId)}`,
-    { method: 'PUT', body: JSON.stringify(buildEventPayload(task, reminders)) },
+    { method: 'PUT', body: JSON.stringify(buildEventPayload(task, reminders, projectName)) },
   );
 }
 

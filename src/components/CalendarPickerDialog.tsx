@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Loader2, Plus, X } from 'lucide-react';
 import { listCalendars, createCalendar, type CalendarEntry } from '../lib/googleCalendar';
+import { supabase } from '../lib/supabase';
 
 interface Props {
   token: string;
@@ -53,7 +54,24 @@ export function CalendarPickerDialog({ token, title, description, onSelect, onCl
           {loading && (
             <div className="flex justify-center py-6"><Loader2 className="animate-spin text-muted" size={20} /></div>
           )}
-          {error && <p className="text-sm text-red-400 text-center py-4">{error}</p>}
+          {error && (
+            <div className="text-center py-4 space-y-3">
+              <p className="text-sm text-red-400">{error}</p>
+              <button
+                onClick={() => void supabase.auth.signInWithOAuth({
+                  provider: 'google',
+                  options: {
+                    redirectTo: window.location.origin + window.location.pathname,
+                    scopes: 'https://www.googleapis.com/auth/calendar',
+                    queryParams: { access_type: 'offline', prompt: 'consent' },
+                  },
+                })}
+                className="btn-primary text-sm"
+              >
+                כניסה מחדש עם Google
+              </button>
+            </div>
+          )}
           {!loading && !error && calendars.map(cal => (
             <button
               key={cal.id}

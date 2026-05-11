@@ -169,6 +169,14 @@ export function AddDialog({ scope, type, projects, defaultProjectId, editing, on
             <div>
               <label className="block text-xs text-muted mb-1">תאריך יעד</label>
               <input type="date" className="input" value={dueDate} onChange={(e) => setDueDate(e.target.value)} />
+              {type === 'task' && calendarToken && dueDate && (
+                <p className="text-[11px] text-accent/70 mt-1 flex items-center gap-1">
+                  <CalendarCheck size={11} /> ישולב בגוגל קלנדר
+                  {projectId && projects.find(p => p.id === projectId) && (
+                    <> · {projects.find(p => p.id === projectId)!.name}</>
+                  )}
+                </p>
+              )}
             </div>
 
             <div>
