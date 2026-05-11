@@ -29,12 +29,12 @@ async function savePrefs(userId: string, patch: Partial<UserPreferences>): Promi
 }
 
 export function useCalendarSync() {
-  const { session } = useAuth();
+  const { session, providerToken } = useAuth();
   const [prefs, setPrefs] = useState<UserPreferences | null>(null);
   const [needsCalendarSetup, setNeedsCalendarSetup] = useState(false);
   const [pendingFreeTasks, setPendingFreeTasks] = useState<Array<{ task: Task; scope: Scope }>>([]);
 
-  const token = session?.provider_token ?? null;
+  const token = providerToken;
   const userId = session?.user?.id ?? null;
 
   useEffect(() => {

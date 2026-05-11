@@ -52,14 +52,15 @@ interface ScopeViewProps {
   scope: Scope;
   setScope: (s: Scope) => void;
   session: Session;
+  providerToken: string | null;
 }
 
-function ScopeView({ scope, setScope, session }: ScopeViewProps) {
+function ScopeView({ scope, setScope, session, providerToken }: ScopeViewProps) {
   const { projects, refresh: refreshProjects } = useProjects(scope);
   const { tasks, refresh: refreshTasks } = useTasks(scope);
   const { counts: fileCounts, refresh: refreshFileCounts } = useFileCounts(scope);
   const { syncTask, removeTaskEvent, prefs, updatePrefs, needsCalendarSetup, setNeedsCalendarSetup, flushPending, isCalendarReady } = useCalendarSync();
-  const calendarToken = session.provider_token ?? null;
+  const calendarToken = providerToken;
   const [showCalendarSettings, setShowCalendarSettings] = useState(false);
   type View = 'projects' | 'projects-done' | 'projects-frozen' | 'orphans' | 'orphans-done';
   const [filterProjectId, setFilterProjectId] = useState<number | null>(null);
@@ -241,7 +242,7 @@ function ScopeView({ scope, setScope, session }: ScopeViewProps) {
               title={session.user.email ?? ''}
             >
               🎯 ניהול פרויקטים
-              <span className="text-[10px] font-normal text-muted/70" dir="ltr">V1.30</span>
+              <span className="text-[10px] font-normal text-muted/70" dir="ltr">V1.31</span>
             </button>
             {menuOpen && (
               <div className="absolute top-full right-0 mt-1 min-w-[160px] card p-1 z-50 shadow-lg" role="menu">
@@ -527,7 +528,7 @@ function ScopeView({ scope, setScope, session }: ScopeViewProps) {
 }
 
 export default function App() {
-  const { session, loading } = useAuth();
+  const { session, loading, providerToken } = useAuth();
   const [scope, setScope] = useState<Scope>(
     () => (localStorage.getItem('scope') as Scope) ?? 'factory',
   );
@@ -544,7 +545,7 @@ export default function App() {
 
   return (
     <div className="min-h-screen">
-      <ScopeView key={scope} scope={scope} setScope={setScopePersisted} session={session} />
+      <ScopeView key={scope} scope={scope} setScope={setScopePersisted} session={session} providerToken={providerToken} />
     </div>
   );
 }
