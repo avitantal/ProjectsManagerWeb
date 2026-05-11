@@ -35,7 +35,7 @@ export function AddDialog({ scope, type, projects, defaultProjectId, editing, on
   const [projectId, setProjectId] = useState<number | null>(
     editMode ? (editingTask?.project_id ?? null) : (defaultProjectId ?? null),
   );
-  const [syncToCalendar, setSyncToCalendar] = useState(editingProject?.sync_to_calendar ?? false);
+  const [syncToCalendar, setSyncToCalendar] = useState(editingProject?.sync_to_calendar ?? (editMode ? false : true));
   const [gcalCalendarId, setGcalCalendarId] = useState<string | null>(editingProject?.gcal_calendar_id ?? null);
   const [gcalCalendarName, setGcalCalendarName] = useState<string | null>(null);
   const [showCalendarPicker, setShowCalendarPicker] = useState(false);
