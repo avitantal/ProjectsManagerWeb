@@ -1,9 +1,10 @@
 import { useState, type FormEvent } from 'react';
-import { X } from 'lucide-react';
+import { CalendarCheck, X } from 'lucide-react';
 import {
   type Scope, type Project, type Task, supabase,
   PROJECT_STATUS_HE, PRIORITY_HE, TASK_STATUS_HE, TASK_PRIORITY_HE,
 } from '../lib/supabase';
+import { CalendarPickerDialog } from './CalendarPickerDialog';
 
 interface Props {
   scope: Scope;
@@ -13,13 +14,15 @@ interface Props {
   editing?: Project | Task;
   onClose: () => void;
   onSaved: () => void;
+  onTaskSaved?: (task: Task) => Promise<void>;
+  calendarToken?: string | null;
 }
 
 function isTask(entity: Project | Task | undefined): entity is Task {
   return !!entity && 'project_id' in entity;
 }
 
-export function AddDialog({ scope, type, projects, defaultProjectId, editing, onClose, onSaved }: Props) {
+export function AddDialog({ scope, type, projects, defaultProjectId, editing, onClose, onSaved, onTaskSaved, calendarToken }: Props) {
   const editMode = !!editing;
   const editingTask = isTask(editing) ? editing : undefined;
   const editingProject = !isTask(editing) ? (editing as Project | undefined) : undefined;
@@ -32,7 +35,24 @@ export function AddDialog({ scope, type, projects, defaultProjectId, editing, on
   const [projectId, setProjectId] = useState<number | null>(
     editMode ? (editingTask?.project_id ?? null) : (defaultProjectId ?? null),
   );
+  const [syncToCalendar, setSyncToCalendar] = useState(editingProject?.sync_to_calendar ?? false);
+  const [gcalCalendarId, setGcalCalendarId] = useState<string | null>(editingProject?.gcal_calendar_id ?? null);
+  const [gcalCalendarName, setGcalCalendarName] = useState<string | null>(null);
+  const [showCalendarPicker, setShowCalendarPicker] = useState(false);
   const [saving, setSaving] = useState(false);
+
+  function handleSyncToggle(checked: boolean) {
+    setSyncToCalendar(checked);
+    if (checked && !gcalCalendarId && calendarToken) {
+      setShowCalendarPicker(true);
+    }
+  }
+
+  function handleCalendarSelected(calId: string, calName: string) {
+    setGcalCalendarId(calId);
+    setGcalCalendarName(calName);
+    setShowCalendarPicker(false);
+  }
 
   async function submit(e: FormEvent) {
     e.preventDefault();
@@ -47,6 +67,8 @@ export function AddDialog({ scope, type, projects, defaultProjectId, editing, on
     };
     if (type === 'project') {
       payload.description = text || null;
+      payload.sync_to_calendar = syncToCalendar;
+      payload.gcal_calendar_id = syncToCalendar ? gcalCalendarId : null;
       if (editMode && editingProject) {
         if (status === 'done' && editingProject.status !== 'done') payload.closed_at = new Date().toISOString();
         else if (status !== 'done' && editingProject.status === 'done') payload.closed_at = null;
@@ -64,13 +86,31 @@ export function AddDialog({ scope, type, projects, defaultProjectId, editing, on
       }
     }
 
+    let savedTask: Task | null = null;
+
     if (editMode && editing) {
       payload.updated_at = new Date().toISOString();
-      await supabase.from(table).update(payload).eq('id', editing.id);
+      if (type === 'task') {
+        const { data } = await supabase.from(table).update(payload).eq('id', editing.id).select().single();
+        savedTask = data as Task;
+      } else {
+        await supabase.from(table).update(payload).eq('id', editing.id);
+      }
     } else {
-      await supabase.from(table).insert(payload);
+      if (type === 'task') {
+        const { data } = await supabase.from(table).insert(payload).select().single();
+        savedTask = data as Task;
+      } else {
+        await supabase.from(table).insert(payload);
+      }
     }
+
     setSaving(false);
+
+    if (savedTask && onTaskSaved) {
+      await onTaskSaved(savedTask).catch(() => {/* calendar sync errors are non-blocking */});
+    }
+
     onSaved();
     onClose();
   }
@@ -79,7 +119,11 @@ export function AddDialog({ scope, type, projects, defaultProjectId, editing, on
     ? (type === 'project' ? 'עריכת פרויקט' : 'עריכת משימה')
     : (type === 'project' ? 'פרויקט חדש' : 'משימה חדשה');
 
+  const displayCalendarName = gcalCalendarName
+    ?? (gcalCalendarId ? gcalCalendarId : null);
+
   return (
+    <>
     <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-end sm:items-center justify-center sm:p-4" onClick={onClose}>
       <div className="w-full sm:max-w-md bg-bg border border-border rounded-t-2xl sm:rounded-xl max-h-[92vh] flex flex-col" onClick={(e) => e.stopPropagation()}>
         <div className="flex items-center justify-between px-6 py-4 border-b border-border shrink-0">
@@ -131,6 +175,47 @@ export function AddDialog({ scope, type, projects, defaultProjectId, editing, on
               <label className="block text-xs text-muted mb-1">{type === 'project' ? 'תיאור' : 'הערות'}</label>
               <textarea className="input min-h-[80px]" value={text} onChange={(e) => setText(e.target.value)} />
             </div>
+
+            {type === 'project' && calendarToken && (
+              <div className="border border-border rounded-lg p-3 space-y-2">
+                <label className="flex items-center gap-2.5 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={syncToCalendar}
+                    onChange={e => handleSyncToggle(e.target.checked)}
+                    className="w-4 h-4 accent-accent"
+                  />
+                  <span className="text-sm flex items-center gap-1.5">
+                    <CalendarCheck size={14} className="text-accent" />
+                    סנכרן משימות ליומן Google
+                  </span>
+                </label>
+                {syncToCalendar && (
+                  <div className="flex items-center gap-2 pr-6 text-xs text-muted">
+                    {displayCalendarName ? (
+                      <>
+                        <span className="text-text/80 truncate">{displayCalendarName}</span>
+                        <button
+                          type="button"
+                          onClick={() => setShowCalendarPicker(true)}
+                          className="text-accent hover:underline shrink-0"
+                        >
+                          שנה יומן
+                        </button>
+                      </>
+                    ) : (
+                      <button
+                        type="button"
+                        onClick={() => setShowCalendarPicker(true)}
+                        className="text-accent hover:underline"
+                      >
+                        בחר יומן…
+                      </button>
+                    )}
+                  </div>
+                )}
+              </div>
+            )}
           </div>
 
           <div className="flex gap-2 justify-end px-6 py-4 border-t border-border shrink-0">
@@ -142,5 +227,16 @@ export function AddDialog({ scope, type, projects, defaultProjectId, editing, on
         </form>
       </div>
     </div>
+
+    {showCalendarPicker && calendarToken && (
+      <CalendarPickerDialog
+        token={calendarToken}
+        title="בחר יומן לפרויקט"
+        description="משימות הפרויקט יסונכרנו ליומן שתבחר"
+        onSelect={handleCalendarSelected}
+        onClose={() => setShowCalendarPicker(false)}
+      />
+    )}
+    </>
   );
 }

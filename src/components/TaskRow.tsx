@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useSwipeable } from 'react-swipeable';
-import { Check, GripVertical, Pencil, RotateCcw, Sparkles, Trash2, NotebookPen } from 'lucide-react';
+import { CalendarCheck, Check, GripVertical, Pencil, RotateCcw, Sparkles, Trash2, NotebookPen } from 'lucide-react';
 import {
   type Task,
   type TaskStatus,
@@ -36,9 +36,12 @@ interface Props {
   isLastClosed?: boolean;
   dragHandleListeners?: Record<string, unknown>;
   dragHandleAttributes?: Record<string, unknown>;
+  onBeforeDelete?: (task: Task) => Promise<void>;
+  onTaskSaved?: (task: Task) => Promise<void>;
+  calendarToken?: string | null;
 }
 
-export function TaskRow({ task, project, projects, scope, onChange, isSelected, onSelect, isLastClosed, dragHandleListeners, dragHandleAttributes }: Props) {
+export function TaskRow({ task, project, projects, scope, onChange, isSelected, onSelect, isLastClosed, dragHandleListeners, dragHandleAttributes, onBeforeDelete, onTaskSaved, calendarToken }: Props) {
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState<TaskDraft>(() => ({
     taskId: task.id,
@@ -115,6 +118,7 @@ export function TaskRow({ task, project, projects, scope, onChange, isSelected, 
   }
 
   async function remove() {
+    if (onBeforeDelete) await onBeforeDelete(task).catch(() => {/* calendar errors non-blocking */});
     await supabase.from(`${scope}_tasks`).delete().eq('id', task.id);
     setConfirmingDeleteId(null);
     onChange();
@@ -208,6 +212,9 @@ export function TaskRow({ task, project, projects, scope, onChange, isSelected, 
         </div>
       </div>
       <div className="flex flex-wrap items-center justify-end gap-2 shrink-0" onClick={e => e.stopPropagation()}>
+        {task.gcal_event_id && (
+          <span title="מסונכרן לגוגל קלנדר"><CalendarCheck size={12} className="text-accent/60 shrink-0" /></span>
+        )}
         {task.due_date && (
           <span className={`text-xs ${overdue ? 'text-red-400' : 'text-muted'}`}>{formatDate(task.due_date)}</span>
         )}
@@ -333,6 +340,8 @@ export function TaskRow({ task, project, projects, scope, onChange, isSelected, 
         editing={task}
         onClose={() => setEditing(false)}
         onSaved={onChange}
+        onTaskSaved={onTaskSaved}
+        calendarToken={calendarToken}
       />
     )}
     </>

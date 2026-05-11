@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useSwipeable } from 'react-swipeable';
-import { Calendar, ChevronDown, ChevronUp, Paperclip, Pencil, RotateCcw, Trash2 } from 'lucide-react';
+import { Calendar, CalendarCheck, ChevronDown, ChevronUp, Paperclip, Pencil, RotateCcw, Trash2 } from 'lucide-react';
 import { ProjectFiles } from './ProjectFiles';
 import { AddDialog } from './AddDialog';
 import {
@@ -33,9 +33,10 @@ interface Props {
   fileCount: number;
   onChange: () => void;
   allowPermDelete?: boolean;
+  calendarToken?: string | null;
 }
 
-export function ProjectCard({ project, scope, progress, fileCount, onChange, allowPermDelete }: Props) {
+export function ProjectCard({ project, scope, progress, fileCount, onChange, allowPermDelete, calendarToken }: Props) {
   const days = daysUntil(project.due_date);
   const overdue = days !== null && days < 0;
   const [statusDraft, setStatusDraft] = useState<StatusDraft>(() => ({
@@ -119,7 +120,10 @@ export function ProjectCard({ project, scope, progress, fileCount, onChange, all
         style={{ width: `${progressPercent}%` }}
       />
       <div className="relative flex items-start justify-between gap-2 mb-1.5">
-        <h3 className="font-medium text-text leading-tight text-sm">{project.name}</h3>
+        <h3 className="font-medium text-text leading-tight text-sm flex items-center gap-1.5">
+          {project.name}
+          {project.sync_to_calendar && <span title="מסונכרן לגוגל קלנדר"><CalendarCheck size={12} className="text-accent/60 shrink-0" /></span>}
+        </h3>
         {confirmingDelete ? (
           <div className="flex items-center gap-1 shrink-0" onClick={(e) => e.stopPropagation()}>
             <button type="button" onClick={() => void remove()} className="rounded-md bg-red-500/20 px-1.5 py-0.5 text-[11px] text-red-200 hover:bg-red-500/30">
@@ -246,6 +250,7 @@ export function ProjectCard({ project, scope, progress, fileCount, onChange, all
         editing={project}
         onClose={() => setEditing(false)}
         onSaved={onChange}
+        calendarToken={calendarToken}
       />
     )}
     </>

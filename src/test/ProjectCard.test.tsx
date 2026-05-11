@@ -49,19 +49,19 @@ describe('ProjectCard', () => {
 
   it('shows correct progress percentage', () => {
     render(<ProjectCard {...defaultProps} />);
-    expect(screen.getByText('40%')).toBeInTheDocument();
-    expect(screen.getByText('2/5 משימות הושלמו')).toBeInTheDocument();
+    expect(screen.getByText(/40%/)).toBeInTheDocument();
+    expect(screen.getByText('2 מתוך 5 משימות')).toBeInTheDocument();
   });
 
   it('shows 0% progress when no tasks', () => {
     render(<ProjectCard {...defaultProps} progress={{ completed: 0, total: 0 }} />);
-    expect(screen.getByText('0%')).toBeInTheDocument();
-    expect(screen.getByText('אין משימות בפרויקט')).toBeInTheDocument();
+    expect(screen.getByText('אין משימות')).toBeInTheDocument();
   });
 
-  it('shows 100% for done project with no tasks', () => {
-    render(<ProjectCard {...defaultProps} project={{ ...baseProject, status: 'done' }} progress={{ completed: 0, total: 0 }} />);
-    expect(screen.getByText('100%')).toBeInTheDocument();
+  it('shows full progress fill for done project with no tasks', () => {
+    const { container } = render(<ProjectCard {...defaultProps} project={{ ...baseProject, status: 'done' }} progress={{ completed: 0, total: 0 }} />);
+    const fill = container.querySelector('[style*="width: 100%"]');
+    expect(fill).toBeInTheDocument();
   });
 
   it('renders status select with current status', () => {

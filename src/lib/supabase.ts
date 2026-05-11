@@ -22,6 +22,14 @@ export interface Project {
   created_at: string;
   updated_at: string;
   closed_at: string | null;
+  sync_to_calendar?: boolean;
+  gcal_calendar_id?: string | null;
+}
+
+export interface UserPreferences {
+  user_id: string;
+  gcal_default_calendar_id: string | null;
+  gcal_reminders: number[];
 }
 
 export interface Task {
@@ -37,6 +45,7 @@ export interface Task {
   created_at: string;
   updated_at: string;
   closed_at: string | null;
+  gcal_event_id?: string | null;
 }
 
 export interface ProjectFile {

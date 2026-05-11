@@ -13,6 +13,9 @@ interface SortableItemProps {
   isSelected?: boolean;
   onSelect?: () => void;
   isLastClosed?: boolean;
+  onBeforeDelete?: (task: Task) => Promise<void>;
+  onTaskSaved?: (task: Task) => Promise<void>;
+  calendarToken?: string | null;
 }
 
 function SortableItem({ task, ...props }: SortableItemProps) {
@@ -47,9 +50,12 @@ interface Props {
   onSelect: (id: number | null) => void;
   lastClosedTaskId: number | null;
   projectsById: Map<number, Project>;
+  onBeforeDelete?: (task: Task) => Promise<void>;
+  onTaskSaved?: (task: Task) => Promise<void>;
+  calendarToken?: string | null;
 }
 
-export function SortableTaskList({ tasks, projects, scope, onChange, onReorder, selectedTaskId, onSelect, lastClosedTaskId, projectsById }: Props) {
+export function SortableTaskList({ tasks, projects, scope, onChange, onReorder, selectedTaskId, onSelect, lastClosedTaskId, projectsById, onBeforeDelete, onTaskSaved, calendarToken }: Props) {
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 8 } }),
   );
@@ -80,6 +86,9 @@ export function SortableTaskList({ tasks, projects, scope, onChange, onReorder, 
               isSelected={selectedTaskId === t.id}
               onSelect={() => onSelect(selectedTaskId === t.id ? null : t.id)}
               isLastClosed={t.id === lastClosedTaskId}
+              onBeforeDelete={onBeforeDelete}
+              onTaskSaved={onTaskSaved}
+              calendarToken={calendarToken}
             />
           ))}
         </div>

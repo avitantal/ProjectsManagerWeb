@@ -1,14 +1,16 @@
 import { useState, useMemo, useEffect, useRef } from 'react';
 import type { Session } from '@supabase/supabase-js';
-import { Plus, RefreshCw, Factory, House, LogOut, Loader2, FolderKanban, ListTodo, CheckCircle2, Archive, X } from 'lucide-react';
+import { CalendarCog, Plus, RefreshCw, Factory, House, LogOut, Loader2, FolderKanban, ListTodo, CheckCircle2, Archive, X } from 'lucide-react';
 import { useProjects, useTasks, useFileCounts } from './hooks/useData';
 import { useAuth } from './hooks/useAuth';
+import { useCalendarSync } from './hooks/useCalendarSync';
 import { supabase, type Scope, type Task, type Project } from './lib/supabase';
 import { Stats } from './components/Stats';
 import { ProjectCard } from './components/ProjectCard';
 import { SortableTaskList } from './components/SortableTaskList';
 import { AddDialog } from './components/AddDialog';
 import { Auth } from './components/Auth';
+import { CalendarFirstUseDialog, CalendarSettingsDialog } from './components/CalendarSettingsDialog';
 import { cn } from './lib/utils';
 import { buildProjectProgress, getProjectProgress, isProjectActive, isProjectComplete, isProjectDone } from './lib/projectProgress';
 
@@ -56,6 +58,9 @@ function ScopeView({ scope, setScope, session }: ScopeViewProps) {
   const { projects, refresh: refreshProjects } = useProjects(scope);
   const { tasks, refresh: refreshTasks } = useTasks(scope);
   const { counts: fileCounts, refresh: refreshFileCounts } = useFileCounts(scope);
+  const { syncTask, removeTaskEvent, prefs, updatePrefs, needsCalendarSetup, setNeedsCalendarSetup, flushPending, isCalendarReady } = useCalendarSync();
+  const calendarToken = session.provider_token ?? null;
+  const [showCalendarSettings, setShowCalendarSettings] = useState(false);
   type View = 'projects' | 'projects-done' | 'projects-frozen' | 'orphans' | 'orphans-done';
   const [filterProjectId, setFilterProjectId] = useState<number | null>(null);
   const [view, setView] = useState<View>(
@@ -236,7 +241,7 @@ function ScopeView({ scope, setScope, session }: ScopeViewProps) {
               title={session.user.email ?? ''}
             >
               🎯 ניהול פרויקטים
-              <span className="text-[10px] font-normal text-muted/70" dir="ltr">V1.24</span>
+              <span className="text-[10px] font-normal text-muted/70" dir="ltr">V1.25</span>
             </button>
             {menuOpen && (
               <div className="absolute top-full right-0 mt-1 min-w-[160px] card p-1 z-50 shadow-lg" role="menu">
@@ -247,6 +252,15 @@ function ScopeView({ scope, setScope, session }: ScopeViewProps) {
                 >
                   <RefreshCw size={14} /> רענן
                 </button>
+                {isCalendarReady && (
+                  <button
+                    onClick={() => { setMenuOpen(false); setShowCalendarSettings(true); }}
+                    className="w-full flex items-center gap-2 px-3 py-2 text-sm rounded-md hover:bg-surface text-right"
+                    role="menuitem"
+                  >
+                    <CalendarCog size={14} /> הגדרות קלנדר
+                  </button>
+                )}
                 <button
                   onClick={() => { setMenuOpen(false); void supabase.auth.signOut(); }}
                   className="w-full flex items-center gap-2 px-3 py-2 text-sm rounded-md hover:bg-surface text-right"
@@ -358,7 +372,7 @@ function ScopeView({ scope, setScope, session }: ScopeViewProps) {
                       <div key={p.id}
                            onClick={() => view === 'projects' && setFilterProjectId(filterProjectId === p.id ? null : p.id)}
                            className={cn(view === 'projects' && 'cursor-pointer', filterProjectId === p.id && 'ring-1 ring-accent rounded-xl')}>
-                        <ProjectCard project={p} scope={scope} progress={getProjectProgress(projectProgress, p.id)} fileCount={fileCounts.get(p.id) ?? 0} onChange={refreshAll} allowPermDelete={view === 'projects-frozen'} />
+                        <ProjectCard project={p} scope={scope} progress={getProjectProgress(projectProgress, p.id)} fileCount={fileCounts.get(p.id) ?? 0} onChange={refreshAll} allowPermDelete={view === 'projects-frozen'} calendarToken={calendarToken} />
                       </div>
                     ))}
                   </div>
@@ -408,6 +422,9 @@ function ScopeView({ scope, setScope, session }: ScopeViewProps) {
                     onSelect={id => setSelectedTaskId(id)}
                     lastClosedTaskId={lastClosedTaskId}
                     projectsById={projectsById}
+                    onBeforeDelete={task => removeTaskEvent(task, scope, projects)}
+                    onTaskSaved={async task => { await syncTask(task, scope, projects); }}
+                    calendarToken={calendarToken}
                   />
                 </section>
               )}
@@ -437,6 +454,8 @@ function ScopeView({ scope, setScope, session }: ScopeViewProps) {
                 onSelect={id => setSelectedTaskId(id)}
                 lastClosedTaskId={lastClosedTaskId}
                 projectsById={projectsById}
+                onBeforeDelete={task => removeTaskEvent(task, scope, projects)}
+                calendarToken={calendarToken}
               />
             </div>
             <div className="p-3 border-t border-border shrink-0">
@@ -456,6 +475,31 @@ function ScopeView({ scope, setScope, session }: ScopeViewProps) {
           defaultProjectId={view === 'orphans' || view === 'orphans-done' ? null : (filterProjectId ?? undefined)}
           onClose={() => setShowAdd(null)}
           onSaved={refreshAll}
+          onTaskSaved={async task => { await syncTask(task, scope, projects); }}
+          calendarToken={calendarToken}
+        />
+      )}
+
+      {needsCalendarSetup && calendarToken && (
+        <CalendarFirstUseDialog
+          token={calendarToken}
+          onSave={async patch => {
+            await updatePrefs(patch);
+            if (patch.gcal_default_calendar_id) {
+              await flushPending(patch.gcal_default_calendar_id, scope);
+            }
+            return;
+          }}
+          onClose={() => setNeedsCalendarSetup(false)}
+        />
+      )}
+
+      {showCalendarSettings && calendarToken && (
+        <CalendarSettingsDialog
+          token={calendarToken}
+          prefs={prefs}
+          onSave={async patch => { await updatePrefs(patch); }}
+          onClose={() => setShowCalendarSettings(false)}
         />
       )}
     </>
