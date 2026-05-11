@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
+import { toast } from 'sonner';
 import { supabase, type Task, type Project, type Scope, type UserPreferences } from '../lib/supabase';
 import { useAuth } from './useAuth';
 import {
@@ -96,14 +97,17 @@ export function useCalendarSync() {
     try {
       if (task.gcal_event_id) {
         await updateEvent(token, calendarId, task.gcal_event_id, task, reminders, projectName);
+        toast.success('אירוע עודכן בגוגל קלנדר');
         return task.gcal_event_id;
       } else {
         const eventId = await createEvent(token, calendarId, task, reminders, projectName);
         await supabase.from(`${scope}_tasks`).update({ gcal_event_id: eventId }).eq('id', task.id);
+        toast.success('משימה נוספה לגוגל קלנדר');
         return eventId;
       }
     } catch (err) {
       console.error('Calendar sync failed:', err);
+      toast.error('סנכרון קלנדר נכשל');
       return null;
     }
   }
