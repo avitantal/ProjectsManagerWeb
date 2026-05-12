@@ -40,7 +40,6 @@ export function AddDialog({ scope, type, projects, defaultProjectId, editing, on
     editMode ? (editingTask?.project_id ?? null) : (defaultProjectId ?? null),
   );
   const [syncToCalendar, setSyncToCalendar] = useState(editingProject?.sync_to_calendar ?? (editMode ? false : true));
-  const [syncTaskToCalendar, setSyncTaskToCalendar] = useState(!!calendarToken);
   const [gcalCalendarId, setGcalCalendarId] = useState<string | null>(editingProject?.gcal_calendar_id ?? null);
   const [gcalCalendarName, setGcalCalendarName] = useState<string | null>(null);
   const [showCalendarPicker, setShowCalendarPicker] = useState(false);
@@ -118,7 +117,7 @@ export function AddDialog({ scope, type, projects, defaultProjectId, editing, on
 
     setSaving(false);
 
-    if (savedTask && onTaskSaved && syncTaskToCalendar) {
+    if (savedTask && onTaskSaved && calendarToken) {
       await onTaskSaved(savedTask).catch(() => {});
     }
     if (savedProject && onProjectSaved && syncToCalendar && savedProject.due_date) {
@@ -195,21 +194,13 @@ export function AddDialog({ scope, type, projects, defaultProjectId, editing, on
                 )}
               </div>
               {type === 'task' && calendarToken && dueDate && (
-                <label className="flex items-center gap-2 mt-1.5 cursor-pointer w-fit">
-                  <input
-                    type="checkbox"
-                    checked={syncTaskToCalendar}
-                    onChange={e => setSyncTaskToCalendar(e.target.checked)}
-                    className="w-3.5 h-3.5 accent-accent"
-                  />
-                  <span className="text-[11px] text-accent/80 flex items-center gap-1">
-                    <CalendarCheck size={11} />
-                    סנכרן לגוגל קלנדר
-                    {projectId && projects.find(p => p.id === projectId) && (
-                      <span className="text-muted"> · {projects.find(p => p.id === projectId)!.name}</span>
-                    )}
-                  </span>
-                </label>
+                <span className="text-[11px] text-accent/60 flex items-center gap-1 mt-1.5">
+                  <CalendarCheck size={11} />
+                  יסונכרן לגוגל קלנדר אוטומטית
+                  {projectId && projects.find(p => p.id === projectId) && (
+                    <span className="text-muted"> · {projects.find(p => p.id === projectId)!.name}</span>
+                  )}
+                </span>
               )}
             </div>
 
