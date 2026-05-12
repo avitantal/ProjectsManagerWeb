@@ -32,7 +32,7 @@ export function useCalendarSync() {
   const { session, providerToken } = useAuth();
   const [prefs, setPrefs] = useState<UserPreferences | null>(null);
   const [needsCalendarSetup, setNeedsCalendarSetup] = useState(false);
-  const [pendingFreeTasks, setPendingFreeTasks] = useState<Array<{ task: Task; scope: Scope }>>([]);
+  const [, setPendingFreeTasks] = useState<Array<{ task: Task; scope: Scope }>>([]);
 
   const token = providerToken;
   const userId = session?.user?.id ?? null;
@@ -49,17 +49,13 @@ export function useCalendarSync() {
     return updated;
   }, [userId]);
 
-  function resolveCalendarId(task: Task, projects: Project[]): string | null {
+  function resolveCalendarId(task: Task, projects: Project[]): string {
     if (task.project_id !== null) {
       const proj = projects.find(p => p.id === task.project_id);
-      // project has its own calendar configured — use it
       if (proj?.sync_to_calendar && proj.gcal_calendar_id) return proj.gcal_calendar_id;
-      // fall back to user default calendar
     }
-    if (prefs?.gcal_default_calendar_id) return prefs.gcal_default_calendar_id;
-    // trigger first-use setup
-    setNeedsCalendarSetup(true);
-    return null;
+    // user-configured default, or fall back to Google's built-in 'primary' calendar
+    return prefs?.gcal_default_calendar_id ?? 'primary';
   }
 
   function resolveProjectName(task: Task, projects: Project[]): string | null {
@@ -72,15 +68,12 @@ export function useCalendarSync() {
     scope: Scope,
     projects: Project[],
   ): Promise<string | null> {
-    if (!token) return null;
-
-    const calendarId = resolveCalendarId(task, projects);
-    if (!calendarId) {
-      if (!prefs?.gcal_default_calendar_id) {
-        setPendingFreeTasks(prev => [...prev, { task, scope }]);
-      }
+    if (!token) {
+      toast.warning('יש להתחבר לגוגל קלנדר');
       return null;
     }
+
+    const calendarId = resolveCalendarId(task, projects);
 
     const reminders = prefs?.gcal_reminders ?? DEFAULT_REMINDERS;
     const projectName = resolveProjectName(task, projects);
@@ -119,17 +112,9 @@ export function useCalendarSync() {
     try { await deleteEvent(token, calendarId, task.gcal_event_id); } catch { /* already gone */ }
   }
 
-  // flush pending tasks once default calendar is set
-  async function flushPending(calendarId: string, targetScope: Scope) {
-    for (const { task, scope: s } of pendingFreeTasks) {
-      if (s !== targetScope) continue;
-      const reminders = prefs?.gcal_reminders ?? DEFAULT_REMINDERS;
-      try {
-        const eventId = await createEvent(token!, calendarId, task, reminders);
-        await supabase.from(`${targetScope}_tasks`).update({ gcal_event_id: eventId }).eq('id', task.id);
-      } catch { /* silent */ }
-    }
-    setPendingFreeTasks(prev => prev.filter(p => p.scope !== targetScope));
+  async function flushPending(_calendarId: string, _targetScope: Scope) {
+    // no-op: tasks now sync immediately to 'primary' — no queuing needed
+    setPendingFreeTasks([]);
   }
 
   return {
