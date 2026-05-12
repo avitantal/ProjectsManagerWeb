@@ -25,6 +25,7 @@ export interface Project {
   closed_at: string | null;
   sync_to_calendar?: boolean;
   gcal_calendar_id?: string | null;
+  gcal_event_id?: string | null;
 }
 
 export interface UserPreferences {

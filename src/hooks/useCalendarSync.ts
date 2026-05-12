@@ -6,6 +6,8 @@ import {
   createEvent,
   updateEvent,
   deleteEvent,
+  createProjectEvent,
+  updateProjectEvent,
   isGoogleCalendarAuthError,
   isGoogleCalendarConfigurationError,
 } from '../lib/googleCalendar';
@@ -116,6 +118,43 @@ export function useCalendarSync(
     }
   }
 
+  async function syncProject(project: Project, scope: Scope): Promise<string | null> {
+    if (!token) return null;
+    const calendarId = project.gcal_calendar_id ?? prefs?.gcal_default_calendar_id ?? 'primary';
+    const reminders = prefs?.gcal_reminders ?? DEFAULT_REMINDERS;
+
+    if (!project.due_date) {
+      if (project.gcal_event_id) {
+        try { await deleteEvent(token, calendarId, project.gcal_event_id); } catch { /* already gone */ }
+        await supabase.from(`${scope}_projects`).update({ gcal_event_id: null }).eq('id', project.id);
+      }
+      return null;
+    }
+
+    try {
+      if (project.gcal_event_id) {
+        await updateProjectEvent(token, calendarId, project.gcal_event_id, project, reminders);
+        toast.success('פרויקט עודכן ב-Google Calendar');
+        return project.gcal_event_id;
+      }
+      const eventId = await createProjectEvent(token, calendarId, project, reminders);
+      await supabase.from(`${scope}_projects`).update({ gcal_event_id: eventId }).eq('id', project.id);
+      toast.success('פרויקט נוסף ל-Google Calendar');
+      return eventId;
+    } catch (err) {
+      console.error('Project calendar sync failed:', err instanceof Error ? err.message : err);
+      if (isGoogleCalendarAuthError(err)) {
+        onCalendarAuthError?.();
+        toast.error('סנכרון נכשל: צריך להתחבר מחדש ל-Google Calendar');
+      } else if (isGoogleCalendarConfigurationError(err)) {
+        toast.error('סנכרון נכשל: Google Calendar API לא פעיל בפרויקט ה-OAuth');
+      } else {
+        toast.error(`סנכרון פרויקט נכשל: ${err instanceof Error ? err.message.slice(0, 80) : String(err)}`);
+      }
+      return null;
+    }
+  }
+
   async function removeTaskEvent(task: Task, _taskScope: Scope, taskProjects: Project[]) {
     if (!token || !task.gcal_event_id) return;
     const calendarId = resolveCalendarId(task, taskProjects);
@@ -129,6 +168,7 @@ export function useCalendarSync(
 
   return {
     syncTask,
+    syncProject,
     removeTaskEvent,
     prefs,
     updatePrefs,

@@ -35,9 +35,10 @@ interface Props {
   allowPermDelete?: boolean;
   calendarToken?: string | null;
   onCalendarAuthError?: () => void;
+  onProjectSaved?: (project: Project) => Promise<void>;
 }
 
-export function ProjectCard({ project, scope, progress, fileCount, onChange, allowPermDelete, calendarToken, onCalendarAuthError }: Props) {
+export function ProjectCard({ project, scope, progress, fileCount, onChange, allowPermDelete, calendarToken, onCalendarAuthError, onProjectSaved }: Props) {
   const days = daysUntil(project.due_date);
   const overdue = days !== null && days < 0;
   const [statusDraft, setStatusDraft] = useState<StatusDraft>(() => ({
@@ -251,6 +252,7 @@ export function ProjectCard({ project, scope, progress, fileCount, onChange, all
         editing={project}
         onClose={() => setEditing(false)}
         onSaved={onChange}
+        onProjectSaved={onProjectSaved}
         calendarToken={calendarToken}
         onCalendarAuthError={onCalendarAuthError}
       />

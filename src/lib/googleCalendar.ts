@@ -1,5 +1,5 @@
-import type { Task, TaskPriority } from './supabase';
-import { TASK_STATUS_HE, TASK_PRIORITY_HE } from './supabase';
+import type { Task, TaskPriority, Project, Priority } from './supabase';
+import { TASK_STATUS_HE, TASK_PRIORITY_HE, PROJECT_STATUS_HE, PRIORITY_HE } from './supabase';
 
 const BASE = 'https://www.googleapis.com/calendar/v3';
 
@@ -211,5 +211,67 @@ export async function deleteEvent(
     token,
     `/calendars/${encodeURIComponent(calendarId)}/events/${encodeURIComponent(eventId)}`,
     { method: 'DELETE' },
+  );
+}
+
+const PROJECT_PRIORITY_EMOJI: Record<Priority, string> = {
+  high: '🔴',
+  medium: '🟠',
+  low: '⚪',
+};
+
+function buildProjectEventPayload(project: Project, reminders: number[]) {
+  const date = project.due_date!;
+  const nextDay = new Date(date);
+  nextDay.setDate(nextDay.getDate() + 1);
+  const endDate = nextDay.toISOString().slice(0, 10);
+
+  const descLines = [
+    `📁 ${project.name}`,
+    project.description ?? '',
+    '─────────────────',
+    `עדיפות: ${PRIORITY_HE[project.priority]}`,
+    `סטטוס:  ${PROJECT_STATUS_HE[project.status]}`,
+    '─────────────────',
+    '✦ נוצר על ידי ProjectsManager',
+  ].filter(l => l !== '');
+
+  return {
+    summary: `${PROJECT_PRIORITY_EMOJI[project.priority]} 🎯 ${project.name}`,
+    description: descLines.join('\n'),
+    start: { date },
+    end: { date: endDate },
+    reminders: {
+      useDefault: false,
+      overrides: reminders.map(minutes => ({ method: 'popup', minutes })),
+    },
+  };
+}
+
+export async function createProjectEvent(
+  token: string,
+  calendarId: string,
+  project: Project,
+  reminders: number[],
+): Promise<string> {
+  const data = await gcalFetch(
+    token,
+    `/calendars/${encodeURIComponent(calendarId)}/events`,
+    { method: 'POST', body: JSON.stringify(buildProjectEventPayload(project, reminders)) },
+  );
+  return data.id as string;
+}
+
+export async function updateProjectEvent(
+  token: string,
+  calendarId: string,
+  eventId: string,
+  project: Project,
+  reminders: number[],
+): Promise<void> {
+  await gcalFetch(
+    token,
+    `/calendars/${encodeURIComponent(calendarId)}/events/${encodeURIComponent(eventId)}`,
+    { method: 'PUT', body: JSON.stringify(buildProjectEventPayload(project, reminders)) },
   );
 }

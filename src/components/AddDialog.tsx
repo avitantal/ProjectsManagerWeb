@@ -15,6 +15,7 @@ interface Props {
   onClose: () => void;
   onSaved: () => void;
   onTaskSaved?: (task: Task) => Promise<void>;
+  onProjectSaved?: (project: Project) => Promise<void>;
   calendarToken?: string | null;
   onCalendarAuthError?: () => void;
 }
@@ -23,7 +24,7 @@ function isTask(entity: Project | Task | undefined): entity is Task {
   return !!entity && 'project_id' in entity;
 }
 
-export function AddDialog({ scope, type, projects, defaultProjectId, editing, onClose, onSaved, onTaskSaved, calendarToken, onCalendarAuthError }: Props) {
+export function AddDialog({ scope, type, projects, defaultProjectId, editing, onClose, onSaved, onTaskSaved, onProjectSaved, calendarToken, onCalendarAuthError }: Props) {
   const editMode = !!editing;
   const editingTask = isTask(editing) ? editing : undefined;
   const editingProject = !isTask(editing) ? (editing as Project | undefined) : undefined;
@@ -93,6 +94,7 @@ export function AddDialog({ scope, type, projects, defaultProjectId, editing, on
     }
 
     let savedTask: Task | null = null;
+    let savedProject: Project | null = null;
 
     if (editMode && editing) {
       payload.updated_at = new Date().toISOString();
@@ -100,21 +102,26 @@ export function AddDialog({ scope, type, projects, defaultProjectId, editing, on
         const { data } = await supabase.from(table).update(payload).eq('id', editing.id).select().single();
         savedTask = data as Task;
       } else {
-        await supabase.from(table).update(payload).eq('id', editing.id);
+        const { data } = await supabase.from(table).update(payload).eq('id', editing.id).select().single();
+        savedProject = data as Project;
       }
     } else {
       if (type === 'task') {
         const { data } = await supabase.from(table).insert(payload).select().single();
         savedTask = data as Task;
       } else {
-        await supabase.from(table).insert(payload);
+        const { data } = await supabase.from(table).insert(payload).select().single();
+        savedProject = data as Project;
       }
     }
 
     setSaving(false);
 
     if (savedTask && onTaskSaved && syncTaskToCalendar) {
-      await onTaskSaved(savedTask).catch(() => {/* calendar sync errors are non-blocking */});
+      await onTaskSaved(savedTask).catch(() => {});
+    }
+    if (savedProject && onProjectSaved && syncToCalendar && savedProject.due_date) {
+      await onProjectSaved(savedProject).catch(() => {});
     }
 
     onSaved();
