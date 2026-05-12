@@ -5,6 +5,7 @@ import {
   PROJECT_STATUS_HE, PRIORITY_HE, TASK_STATUS_HE, TASK_PRIORITY_HE,
 } from '../lib/supabase';
 import { CalendarPickerDialog } from './CalendarPickerDialog';
+import { DatePickerInput } from './DatePickerInput';
 
 interface Props {
   scope: Scope;
@@ -182,7 +183,7 @@ export function AddDialog({ scope, type, projects, defaultProjectId, editing, on
             <div>
               <label className="block text-xs text-muted mb-1">תאריך יעד</label>
               <div className="flex gap-2">
-                <input type="date" className="input flex-1" value={dueDate} onChange={(e) => setDueDate(e.target.value)} />
+                <DatePickerInput value={dueDate} onChange={setDueDate} className="flex-1" />
                 {type === 'task' && dueDate && (
                   <input
                     type="time"
