@@ -66,7 +66,15 @@ async function doRefresh(): Promise<string | null> {
       res = await callEdgeFn(fresh.access_token);
     }
 
-    if (!res.ok) return null;
+    if (!res.ok) {
+      if (res.status === 400 || res.status === 401) {
+        // Bad or revoked refresh token — clear it to stop retrying
+        localStorage.removeItem(REFRESH_TOKEN_KEY);
+        const body = await res.json().catch(() => ({}));
+        console.warn('GCal refresh token rejected by server:', body);
+      }
+      return null;
+    }
     const { access_token } = await res.json();
     if (access_token) { cacheTokens(access_token); return access_token; }
   } catch { /* network error — silent */ }
