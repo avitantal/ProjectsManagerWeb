@@ -30,27 +30,41 @@ function clearTokens() {
   localStorage.removeItem(REFRESH_TOKEN_KEY);
 }
 
+// singleton — prevents duplicate concurrent refresh calls
+let refreshInFlight: Promise<string | null> | null = null;
+
 async function refreshAccessToken(): Promise<string | null> {
-  const refreshToken = localStorage.getItem(REFRESH_TOKEN_KEY);
-  if (!refreshToken) return null;
+  if (refreshInFlight) return refreshInFlight;
+  refreshInFlight = doRefresh().finally(() => { refreshInFlight = null; });
+  return refreshInFlight;
+}
+
+async function doRefresh(): Promise<string | null> {
+  const googleRefreshToken = localStorage.getItem(REFRESH_TOKEN_KEY);
+  if (!googleRefreshToken) return null;
+
+  const callEdgeFn = (jwt: string) => fetch(EDGE_FN_URL, {
+    method:  'POST',
+    headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${jwt}` },
+    body:    JSON.stringify({ refresh_token: googleRefreshToken }),
+  });
+
   try {
-    // always fetch a fresh Supabase JWT — the cached one may have expired
-    const { data: { session } } = await supabase.auth.getSession();
+    let { data: { session } } = await supabase.auth.getSession();
     if (!session?.access_token) return null;
-    const res = await fetch(EDGE_FN_URL, {
-      method:  'POST',
-      headers: {
-        'Content-Type':  'application/json',
-        'Authorization': `Bearer ${session.access_token}`,
-      },
-      body: JSON.stringify({ refresh_token: refreshToken }),
-    });
+
+    let res = await callEdgeFn(session.access_token);
+
+    if (res.status === 401) {
+      // Supabase JWT was mid-rotation — force a fresh one and retry once
+      const { data: { session: fresh } } = await supabase.auth.refreshSession();
+      if (!fresh?.access_token) return null;
+      res = await callEdgeFn(fresh.access_token);
+    }
+
     if (!res.ok) return null;
     const { access_token } = await res.json();
-    if (access_token) {
-      cacheTokens(access_token);
-      return access_token;
-    }
+    if (access_token) { cacheTokens(access_token); return access_token; }
   } catch { /* network error — silent */ }
   return null;
 }
