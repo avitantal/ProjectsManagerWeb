@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>ניהול פרויקטים</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      background: #0f1117;
+      color: #e2e8f0;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 2rem 1rem;
+    }
+    .card {
+      background: #161b27;
+      border: 1px solid #1e293b;
+      border-radius: 16px;
+      padding: 3rem 2.5rem;
+      max-width: 520px;
+      width: 100%;
+      text-align: center;
+    }
+    .icon { font-size: 3rem; margin-bottom: 1rem; }
+    h1 { font-size: 1.75rem; font-weight: 700; color: #f8fafc; margin-bottom: 0.5rem; }
+    .tagline { color: #94a3b8; font-size: 1rem; margin-bottom: 2rem; }
+    .features {
+      text-align: right;
+      margin: 1.5rem 0 2rem;
+      display: flex;
+      flex-direction: column;
+      gap: 0.75rem;
+    }
+    .feature {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+      color: #cbd5e1;
+      font-size: 0.95rem;
+    }
+    .feature-icon { font-size: 1.1rem; flex-shrink: 0; }
+    .btn {
+      display: inline-block;
+      background: #3b82f6;
+      color: white;
+      text-decoration: none;
+      padding: 0.75rem 2rem;
+      border-radius: 8px;
+      font-size: 1rem;
+      font-weight: 600;
+      transition: background 0.2s;
+    }
+    .btn:hover { background: #2563eb; }
+    .footer {
+      margin-top: 2rem;
+      font-size: 0.8rem;
+      color: #475569;
+    }
+    .footer a { color: #60a5fa; text-decoration: none; }
+    .footer a:hover { text-decoration: underline; }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <div class="icon">🎯</div>
+    <h1>ניהול פרויקטים</h1>
+    <p class="tagline">אפליקציית ניהול פרויקטים ומשימות אישיות ועסקיות</p>
+
+    <div class="features">
+      <div class="feature">
+        <span class="feature-icon">📁</span>
+        <span>ניהול פרויקטים ומשימות בסדרי עדיפויות</span>
+      </div>
+      <div class="feature">
+        <span class="feature-icon">🗓️</span>
+        <span>סנכרון אוטומטי עם Google Calendar</span>
+      </div>
+      <div class="feature">
+        <span class="feature-icon">🏠</span>
+        <span>הפרדה בין פרויקטים אישיים ועסקיים</span>
+      </div>
+      <div class="feature">
+        <span class="feature-icon">🔒</span>
+        <span>כניסה מאובטחת עם חשבון Google</span>
+      </div>
+    </div>
+
+    <a href="/ProjectsManagerWeb/" class="btn">כניסה לאפליקציה</a>
+
+    <div class="footer">
+      <a href="/ProjectsManagerWeb/privacy.html">מדיניות פרטיות</a>
+      &nbsp;·&nbsp;
+      <a href="/ProjectsManagerWeb/terms.html">תנאי שימוש</a>
+    </div>
+  </div>
+</body>
+</html>
