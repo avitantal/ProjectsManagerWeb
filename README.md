@@ -1,23 +1,24 @@
-# 🎯 ניהול פרויקטים — ProjectsManagerWeb (V1.25)
+# 🎯 ניהול פרויקטים — ProjectsManagerWeb (V1.45)
 
 אפליקציית ווב לניהול פרויקטים ומשימות עם הפרדה בין הקשר **עבודה** להקשר **אישי**, מבוססת React + TypeScript + Vite, עם Supabase כ-Backend.
 
 ## ✨ תכונות עיקריות
 
 ### אימות ומשתמשים
-- 🔐 **Google OAuth** דרך Supabase Auth — כניסה עם חשבון Google
+- 🔐 **Google OAuth** דרך Supabase Auth (implicit flow) — כניסה עם חשבון Google
 - 👤 **ריבוי משתמשים** — כל משתמש רואה רק את הנתונים שלו (Row Level Security)
 - 💼 **שני הקשרים**: עבודה / אישי — כל אחד עם פרויקטים ומשימות נפרדים
 - 📌 **זכירת מצב** — הטאב וה-Scope האחרון נשמרים ב-localStorage
 
 ### סנכרון Google Calendar
-- 📅 **סנכרון אוטומטי** של משימות עם `due_date` ל-Google Calendar
+- 📅 **סנכרון אוטומטי בכניסה** — בכל לוגין, כל משימה/פרויקט עם `due_date` שאין לו `gcal_event_id` מסונכרן אוטומטית לקלנדר
+- 🏳️ **FLAG חכם** — `gcal_event_id` משמש כסימן שהפריט כבר מסונכרן; משימות ידועות מדולגות בסריקה
 - 🗂️ **בחירת יומן לפי פרויקט** — כל פרויקט מסנכרן ליומן נפרד לפי בחירת המשתמש
 - 🗓️ **יומן ברירת מחדל** למשימות חופשיות (ללא פרויקט) — נשאל פעם אחת בלבד
 - ✏️ **יצירה / עדכון / מחיקה** — האירוע מתעדכן בכל שינוי `due_date`, ונמחק אם `due_date` הוסר
 - 🔔 **תזכורות חכמות** — ברירת מחדל: יום לפני + שעתיים לפני, ניתנות להגדרה מלאה
 - ⚙️ **הגדרות קלנדר** — שינוי יומן ברירת מחדל וניהול תזכורות מה-header בכל עת
-- 🏷️ **חתימה ייחודית** בתיאור האירוע עם שם המשימה, עדיפות, סטטוס והפניה לאפליקציה
+- 🔄 **רענון אוטומטי של טוקן** — הטוקן מתרענן ב-background לפני פקיעתו (55 דקות)
 
 ### פרויקטים
 - ➕ יצירה, עריכה ומחיקה עם סטטוס, עדיפות ותאריך יעד
@@ -32,6 +33,7 @@
 - 🔀 **גרירה וסידור ידני** — D&D מלא דרך @dnd-kit
 - 🤖 **הצעות AI** — משימות מוצעות על ידי AI עם אישור/דחייה
 - 📱 **Swipe למחיקה** במובייל
+- 📅 **DatePicker ויזואלי** — בחירת תאריך עם לוח עברי (react-day-picker)
 - 📅 **אייקון קלנדר** על משימות מסונכרנות
 - ❄️ **הקפאת משימות** עם אפשרות שחזור
 
@@ -55,9 +57,10 @@
 |------|-----------|
 | Frontend | React 19, TypeScript, Vite 8 |
 | Styling | Tailwind CSS 3, lucide-react |
-| Backend | Supabase (Auth + PostgreSQL + RLS) |
+| Backend | Supabase (Auth + PostgreSQL + RLS + Edge Functions) |
 | Drag & Drop | @dnd-kit/core, @dnd-kit/sortable |
 | Calendar | Google Calendar REST API v3 (browser-side) |
+| Date Picker | react-day-picker v10 + date-fns v4 |
 | Deployment | GitHub Pages + GitHub Actions |
 
 ---
@@ -97,6 +100,7 @@ src/
 │   ├── Auth.tsx                   # מסך כניסה עם Google OAuth
 │   ├── CalendarPickerDialog.tsx   # בחירת יומן Google (רשימה + יצירת יומן חדש)
 │   ├── CalendarSettingsDialog.tsx # הגדרות קלנדר + ניהול תזכורות
+│   ├── DatePickerInput.tsx        # DatePicker ויזואלי בעברית (react-day-picker)
 │   ├── InlineChangeActions.tsx    # כפתורי שמור/בטל inline
 │   ├── ProjectCard.tsx            # כרטיס פרויקט עם סרגל התקדמות
 │   ├── ProjectFiles.tsx           # ניהול קבצי Google Drive
@@ -104,10 +108,11 @@ src/
 │   ├── Stats.tsx                  # רצועת סטטיסטיקות
 │   └── TaskRow.tsx                # שורת משימה
 ├── hooks/
-│   ├── useAuth.ts                 # ניהול session
-│   ├── useCalendarSync.ts         # סנכרון Google Calendar
+│   ├── useAuth.ts                 # ניהול session + רענון טוקן Google אוטומטי
+│   ├── useCalendarSync.ts         # סנכרון Google Calendar + סריקת פתיחה
 │   └── useData.ts                 # useProjects, useTasks, useFileCounts
 ├── lib/
+│   ├── googleAuth.ts              # OAuth helpers + קבועי localStorage
 │   ├── googleCalendar.ts          # Google Calendar REST API client
 │   ├── projectProgress.ts         # חישובי התקדמות פרויקט
 │   ├── supabase.ts                # client + types + enums
@@ -120,13 +125,14 @@ src/
 
 ## 🔐 Google Calendar — הגדרה ראשונית
 
-הסנכרון עובד דרך `provider_token` שמוחזר בעת כניסה עם Google. הטוקן תקף ~שעה; לאחר פקיעה יש להתחבר מחדש.
+הסנכרון עובד דרך `provider_token` שמוחזר בעת כניסה עם Google.
 
-1. **משתמש חדש** — כניסה עם Google מעניקה אוטומטית הרשאת קלנדר.
-2. **משתמש קיים שהתחבר לפני V1.25** — נדרשת כניסה מחדש פעם אחת לאישור ה-scope.
-3. **פרויקט עם due_date** — ערוך פרויקט → סמן "סנכרן ליומן Google" → בחר יומן (נשאל פעם אחת).
-4. **משימה חופשית עם due_date** — בשמירה הראשונה יופיע דיאלוג לבחירת יומן ברירת מחדל.
-5. **שינוי הגדרות** — כפתור "הגדרות קלנדר" ב-header.
+1. **כניסה עם Google** — מעניקה אוטומטית הרשאת קלנדר (`https://www.googleapis.com/auth/calendar`).
+2. **רענון אוטומטי** — הטוקן מתרענן ב-background דרך Supabase Edge Function לפני פקיעתו (55 דק'), ללא צורך בלוגין חוזר.
+3. **סנכרון בכניסה** — בכל פתיחת האפליקציה, כל משימה/פרויקט עם `due_date` ו-`gcal_event_id = null` מסונכרן אוטומטית.
+4. **פרויקט עם due_date** — ערוך פרויקט → סמן "סנכרן ליומן Google" → בחר יומן (נשאל פעם אחת).
+5. **משימה חופשית עם due_date** — בשמירה הראשונה יופיע דיאלוג לבחירת יומן ברירת מחדל.
+6. **שינוי הגדרות** — כפתור "הגדרות קלנדר" ב-header.
 
 ---
 
@@ -145,6 +151,8 @@ npm run qa   # lint + vitest + build
 ## 🌐 פריסה
 
 פריסה אוטומטית ל-GitHub Pages בכל push ל-`main` דרך GitHub Actions.
+
+**URL:** `https://avitantal.github.io/ProjectsManagerWeb/`
 
 ---
 
