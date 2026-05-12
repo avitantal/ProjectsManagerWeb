@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>מדיניות פרטיות — ניהול פרויקטים</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      background: #0f1117;
+      color: #e2e8f0;
+      line-height: 1.7;
+      padding: 2rem 1rem;
+    }
+    .container { max-width: 720px; margin: 0 auto; }
+    h1 { font-size: 1.75rem; font-weight: 700; margin-bottom: 0.5rem; color: #f8fafc; }
+    .subtitle { color: #94a3b8; font-size: 0.9rem; margin-bottom: 2.5rem; }
+    h2 { font-size: 1.1rem; font-weight: 600; color: #f1f5f9; margin: 2rem 0 0.6rem; }
+    p, li { color: #cbd5e1; font-size: 0.95rem; }
+    ul { padding-right: 1.4rem; margin-top: 0.4rem; }
+    li { margin-bottom: 0.3rem; }
+    a { color: #60a5fa; text-decoration: none; }
+    a:hover { text-decoration: underline; }
+    .back { display: inline-block; margin-top: 2.5rem; color: #60a5fa; font-size: 0.9rem; }
+    hr { border: none; border-top: 1px solid #1e293b; margin: 2rem 0; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>מדיניות פרטיות</h1>
+    <p class="subtitle">עדכון אחרון: מאי 2026</p>
+
+    <p>אפליקציית <strong>ניהול פרויקטים</strong> ("האפליקציה") מאפשרת לך לנהל פרויקטים ומשימות אישיות ועסקיות ולסנכרן אותן עם Google Calendar. מדיניות זו מסבירה אילו נתונים נאספים, כיצד הם משמשים ואיך הם מוגנים.</p>
+
+    <h2>1. נתונים שנאספים</h2>
+    <ul>
+      <li><strong>פרטי חשבון Google</strong> — שם, כתובת דוא"ל ותמונת פרופיל, לצורך כניסה לאפליקציה בלבד.</li>
+      <li><strong>פרויקטים ומשימות</strong> — כותרות, עדיפויות, תאריכי יעד וסטטוס שאתה מזין.</li>
+      <li><strong>אירועי Google Calendar</strong> — אם בחרת לאפשר סנכרון, האפליקציה יוצרת ומעדכנת אירועים בלוח השנה שלך.</li>
+    </ul>
+
+    <h2>2. שימוש בנתונים</h2>
+    <p>הנתונים משמשים אך ורק להפעלת האפליקציה עצמה:</p>
+    <ul>
+      <li>זיהוי המשתמש ושמירת הנתונים בחשבונו.</li>
+      <li>סנכרון אירועים עם Google Calendar לפי הגדרות המשתמש.</li>
+      <li>אין שימוש בנתונים לפרסום, ניתוח אוכלוסין או מכירה לצדדים שלישיים.</li>
+    </ul>
+
+    <h2>3. שיתוף נתונים עם צדדים שלישיים</h2>
+    <p>האפליקציה משתמשת בשירותים הבאים בלבד:</p>
+    <ul>
+      <li><strong>Supabase</strong> — אחסון נתונים מאובטח עם בקרת גישה ברמת שורה (RLS). ראה <a href="https://supabase.com/privacy" target="_blank" rel="noopener">מדיניות הפרטיות של Supabase</a>.</li>
+      <li><strong>Google OAuth / Google Calendar API</strong> — אימות וסנכרון לוח שנה. ראה <a href="https://policies.google.com/privacy" target="_blank" rel="noopener">מדיניות הפרטיות של Google</a>.</li>
+    </ul>
+    <p>לא מועברים נתונים לאף גורם נוסף.</p>
+
+    <h2>4. הרשאות Google שבהן האפליקציה משתמשת</h2>
+    <ul>
+      <li><code>openid</code>, <code>email</code>, <code>profile</code> — כניסה עם Google.</li>
+      <li><code>https://www.googleapis.com/auth/calendar</code> — יצירה, עדכון ומחיקה של אירועי Calendar בלוחות שנה שבחרת.</li>
+    </ul>
+    <p>האפליקציה אינה קוראת אירועים קיימים מלוח השנה שלך ואינה ניגשת לנתוני Google אחרים.</p>
+
+    <h2>5. אחסון ואבטחה</h2>
+    <p>הנתונים מאוחסנים בשרתי Supabase (AWS) עם הצפנה במנוחה ובמעבר (TLS). כל משתמש ניגש לנתוניו בלבד.</p>
+
+    <h2>6. שמירת נתונים ומחיקה</h2>
+    <p>הנתונים נשמרים כל עוד חשבונך פעיל. לבקשת מחיקת כל נתוניך, שלח דוא"ל אל <a href="mailto:avitantal@gmail.com">avitantal@gmail.com</a>.</p>
+
+    <h2>7. ילדים</h2>
+    <p>האפליקציה אינה מיועדת לילדים מתחת לגיל 13 ואינה אוספת נתונים שלהם ביודעין.</p>
+
+    <h2>8. שינויים במדיניות</h2>
+    <p>שינויים מהותיים יפורסמו בעמוד זה. המשך השימוש לאחר עדכון מהווה הסכמה למדיניות המעודכנת.</p>
+
+    <h2>9. יצירת קשר</h2>
+    <p>לשאלות בנושא פרטיות: <a href="mailto:avitantal@gmail.com">avitantal@gmail.com</a></p>
+
+    <hr />
+    <a href="/ProjectsManagerWeb/" class="back">← חזרה לאפליקציה</a>
+  </div>
+</body>
+</html>
