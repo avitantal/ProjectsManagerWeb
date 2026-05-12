@@ -13,6 +13,7 @@ import { Auth } from './components/Auth';
 import { CalendarFirstUseDialog, CalendarSettingsDialog } from './components/CalendarSettingsDialog';
 import { cn } from './lib/utils';
 import { buildProjectProgress, getProjectProgress, isProjectActive, isProjectComplete, isProjectDone } from './lib/projectProgress';
+import { signInWithGoogleCalendar } from './lib/googleAuth';
 
 type TaskSort    = 'priority' | 'newest' | 'oldest' | 'due_asc' | 'manual';
 type ProjectSort = 'priority' | 'newest' | 'oldest' | 'due_asc';
@@ -53,13 +54,14 @@ interface ScopeViewProps {
   setScope: (s: Scope) => void;
   session: Session;
   providerToken: string | null;
+  onCalendarAuthError: () => void;
 }
 
-function ScopeView({ scope, setScope, session, providerToken }: ScopeViewProps) {
+function ScopeView({ scope, setScope, session, providerToken, onCalendarAuthError }: ScopeViewProps) {
   const { projects, refresh: refreshProjects } = useProjects(scope);
   const { tasks, refresh: refreshTasks } = useTasks(scope);
   const { counts: fileCounts, refresh: refreshFileCounts } = useFileCounts(scope);
-  const { syncTask, removeTaskEvent, prefs, updatePrefs, needsCalendarSetup, setNeedsCalendarSetup, flushPending, isCalendarReady } = useCalendarSync();
+  const { syncTask, removeTaskEvent, prefs, updatePrefs, needsCalendarSetup, setNeedsCalendarSetup, flushPending, isCalendarReady } = useCalendarSync(session, providerToken, onCalendarAuthError);
   const calendarToken = providerToken;
   const [showCalendarSettings, setShowCalendarSettings] = useState(false);
   type View = 'projects' | 'projects-done' | 'projects-frozen' | 'orphans' | 'orphans-done';
@@ -275,14 +277,7 @@ function ScopeView({ scope, setScope, session, providerToken }: ScopeViewProps) 
           <div className="flex items-center gap-2">
             {!isCalendarReady && session.user.app_metadata?.provider === 'google' && (
               <button
-                onClick={() => void supabase.auth.signInWithOAuth({
-                  provider: 'google',
-                  options: {
-                    scopes: 'https://www.googleapis.com/auth/calendar',
-                    redirectTo: window.location.href,
-                    queryParams: { access_type: 'offline', prompt: 'consent' },
-                  },
-                })}
+                onClick={() => void signInWithGoogleCalendar()}
                 className="btn text-xs px-2.5 py-1.5 border border-amber-500/40 text-amber-400 hover:bg-amber-500/10 gap-1.5 shrink-0"
                 title="חבר מחדש לסנכרון עם Google Calendar"
               >
@@ -392,7 +387,7 @@ function ScopeView({ scope, setScope, session, providerToken }: ScopeViewProps) 
                       <div key={p.id}
                            onClick={() => view === 'projects' && setFilterProjectId(filterProjectId === p.id ? null : p.id)}
                            className={cn(view === 'projects' && 'cursor-pointer', filterProjectId === p.id && 'ring-1 ring-accent rounded-xl')}>
-                        <ProjectCard project={p} scope={scope} progress={getProjectProgress(projectProgress, p.id)} fileCount={fileCounts.get(p.id) ?? 0} onChange={refreshAll} allowPermDelete={view === 'projects-frozen'} calendarToken={calendarToken} />
+                        <ProjectCard project={p} scope={scope} progress={getProjectProgress(projectProgress, p.id)} fileCount={fileCounts.get(p.id) ?? 0} onChange={refreshAll} allowPermDelete={view === 'projects-frozen'} calendarToken={calendarToken} onCalendarAuthError={onCalendarAuthError} />
                       </div>
                     ))}
                   </div>
@@ -445,6 +440,7 @@ function ScopeView({ scope, setScope, session, providerToken }: ScopeViewProps) 
                     onBeforeDelete={task => removeTaskEvent(task, scope, projects)}
                     onTaskSaved={async task => { await syncTask(task, scope, projects); }}
                     calendarToken={calendarToken}
+                    onCalendarAuthError={onCalendarAuthError}
                   />
                 </section>
               )}
@@ -477,6 +473,7 @@ function ScopeView({ scope, setScope, session, providerToken }: ScopeViewProps) 
                 onBeforeDelete={task => removeTaskEvent(task, scope, projects)}
                 onTaskSaved={async task => { await syncTask(task, scope, projects); }}
                 calendarToken={calendarToken}
+                onCalendarAuthError={onCalendarAuthError}
               />
             </div>
             <div className="p-3 border-t border-border shrink-0">
@@ -498,6 +495,7 @@ function ScopeView({ scope, setScope, session, providerToken }: ScopeViewProps) 
           onSaved={refreshAll}
           onTaskSaved={async task => { await syncTask(task, scope, projects); }}
           calendarToken={calendarToken}
+          onCalendarAuthError={onCalendarAuthError}
         />
       )}
 
@@ -507,11 +505,12 @@ function ScopeView({ scope, setScope, session, providerToken }: ScopeViewProps) 
           onSave={async patch => {
             await updatePrefs(patch);
             if (patch.gcal_default_calendar_id) {
-              await flushPending(patch.gcal_default_calendar_id, scope);
+              await flushPending();
             }
             return;
           }}
           onClose={() => setNeedsCalendarSetup(false)}
+          onAuthError={onCalendarAuthError}
         />
       )}
 
@@ -521,6 +520,7 @@ function ScopeView({ scope, setScope, session, providerToken }: ScopeViewProps) 
           prefs={prefs}
           onSave={async patch => { await updatePrefs(patch); }}
           onClose={() => setShowCalendarSettings(false)}
+          onAuthError={onCalendarAuthError}
         />
       )}
     </>
@@ -528,7 +528,7 @@ function ScopeView({ scope, setScope, session, providerToken }: ScopeViewProps) 
 }
 
 export default function App() {
-  const { session, loading, providerToken } = useAuth();
+  const { session, loading, providerToken, clearProviderToken } = useAuth();
   const [scope, setScope] = useState<Scope>(
     () => (localStorage.getItem('scope') as Scope) ?? 'factory',
   );
@@ -545,7 +545,7 @@ export default function App() {
 
   return (
     <div className="min-h-screen">
-      <ScopeView key={scope} scope={scope} setScope={setScopePersisted} session={session} providerToken={providerToken} />
+      <ScopeView key={scope} scope={scope} setScope={setScopePersisted} session={session} providerToken={providerToken} onCalendarAuthError={clearProviderToken} />
     </div>
   );
 }

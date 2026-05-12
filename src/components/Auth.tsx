@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Loader2 } from 'lucide-react';
-import { supabase } from '../lib/supabase';
+import { signInWithGoogleCalendar } from '../lib/googleAuth';
 
 export function Auth() {
   const [loading, setLoading] = useState(false);
@@ -9,14 +9,7 @@ export function Auth() {
   async function signInWithGoogle() {
     setLoading(true);
     setError(null);
-    const { error } = await supabase.auth.signInWithOAuth({
-      provider: 'google',
-      options: {
-        redirectTo: window.location.origin + window.location.pathname,
-        scopes: 'https://www.googleapis.com/auth/calendar',
-        queryParams: { access_type: 'offline', prompt: 'consent' },
-      },
-    });
+    const { error } = await signInWithGoogleCalendar();
     if (error) { setError(error.message); setLoading(false); }
   }
 

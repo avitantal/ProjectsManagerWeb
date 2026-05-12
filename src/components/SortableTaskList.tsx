@@ -16,6 +16,7 @@ interface SortableItemProps {
   onBeforeDelete?: (task: Task) => Promise<void>;
   onTaskSaved?: (task: Task) => Promise<void>;
   calendarToken?: string | null;
+  onCalendarAuthError?: () => void;
 }
 
 function SortableItem({ task, ...props }: SortableItemProps) {
@@ -53,9 +54,10 @@ interface Props {
   onBeforeDelete?: (task: Task) => Promise<void>;
   onTaskSaved?: (task: Task) => Promise<void>;
   calendarToken?: string | null;
+  onCalendarAuthError?: () => void;
 }
 
-export function SortableTaskList({ tasks, projects, scope, onChange, onReorder, selectedTaskId, onSelect, lastClosedTaskId, projectsById, onBeforeDelete, onTaskSaved, calendarToken }: Props) {
+export function SortableTaskList({ tasks, projects, scope, onChange, onReorder, selectedTaskId, onSelect, lastClosedTaskId, projectsById, onBeforeDelete, onTaskSaved, calendarToken, onCalendarAuthError }: Props) {
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 8 } }),
   );
@@ -89,6 +91,7 @@ export function SortableTaskList({ tasks, projects, scope, onChange, onReorder, 
               onBeforeDelete={onBeforeDelete}
               onTaskSaved={onTaskSaved}
               calendarToken={calendarToken}
+              onCalendarAuthError={onCalendarAuthError}
             />
           ))}
         </div>

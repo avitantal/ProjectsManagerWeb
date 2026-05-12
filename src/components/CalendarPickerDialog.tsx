@@ -1,29 +1,70 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Loader2, Plus, X } from 'lucide-react';
-import { listCalendars, createCalendar, type CalendarEntry } from '../lib/googleCalendar';
-import { supabase } from '../lib/supabase';
+import {
+  createCalendar,
+  isGoogleCalendarAuthError,
+  isGoogleCalendarConfigurationError,
+  listCalendars,
+  type CalendarEntry,
+} from '../lib/googleCalendar';
+import { signInWithGoogleCalendar } from '../lib/googleAuth';
 
 interface Props {
   token: string;
   title: string;
   description?: string;
   onSelect: (calendarId: string, calendarName: string) => void;
+  onAuthError?: () => void;
   onClose: () => void;
 }
 
-export function CalendarPickerDialog({ token, title, description, onSelect, onClose }: Props) {
+export function CalendarPickerDialog({ token, title, description, onSelect, onAuthError, onClose }: Props) {
   const [calendars, setCalendars] = useState<CalendarEntry[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [showReconnect, setShowReconnect] = useState(false);
   const [creating, setCreating] = useState(false);
   const [newName, setNewName] = useState('');
   const [saving, setSaving] = useState(false);
+  const onAuthErrorRef = useRef(onAuthError);
 
   useEffect(() => {
-    listCalendars(token)
-      .then(setCalendars)
-      .catch(() => setError('לא ניתן לטעון יומנים. נסה להתחבר מחדש.'))
-      .finally(() => setLoading(false));
+    onAuthErrorRef.current = onAuthError;
+  }, [onAuthError]);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    queueMicrotask(() => {
+      if (cancelled) return;
+
+      setLoading(true);
+      setError(null);
+      setShowReconnect(false);
+
+      listCalendars(token)
+        .then((items) => {
+          if (!cancelled) setCalendars(items);
+        })
+        .catch((err) => {
+          if (cancelled) return;
+          if (isGoogleCalendarAuthError(err)) {
+            onAuthErrorRef.current?.();
+            setShowReconnect(true);
+            setError('לא ניתן לטעון יומנים כי ההרשאה ל-Google Calendar חסרה או פגה. התחבר מחדש עם Google.');
+          } else if (isGoogleCalendarConfigurationError(err)) {
+            setError('Google Calendar API חסום בפרויקט Google Cloud. צריך להפעיל את Calendar API עבור פרויקט ה-OAuth.');
+          } else {
+            setShowReconnect(true);
+            setError('לא ניתן לטעון יומנים. נסה להתחבר מחדש.');
+          }
+        })
+        .finally(() => {
+          if (!cancelled) setLoading(false);
+        });
+    });
+
+    return () => { cancelled = true; };
   }, [token]);
 
   async function handleCreate() {
@@ -32,16 +73,22 @@ export function CalendarPickerDialog({ token, title, description, onSelect, onCl
     try {
       const id = await createCalendar(token, newName.trim());
       onSelect(id, newName.trim());
-    } catch {
-      setError('יצירת יומן נכשלה');
+    } catch (err) {
+      if (isGoogleCalendarAuthError(err)) {
+        onAuthError?.();
+        setShowReconnect(true);
+        setError('ההרשאה ל-Google Calendar חסרה או פגה. התחבר מחדש עם Google.');
+      } else {
+        setError('יצירת יומן נכשלה');
+      }
     } finally {
       setSaving(false);
     }
   }
 
   return (
-    <div className="fixed inset-0 bg-black/70 backdrop-blur-sm z-[60] flex items-center justify-center p-4" onClick={onClose}>
-      <div className="w-full max-w-sm bg-bg border border-border rounded-xl flex flex-col max-h-[80vh]" onClick={e => e.stopPropagation()}>
+    <div className="fixed inset-0 bg-black/70 backdrop-blur-sm z-[60] flex items-end sm:items-center justify-center sm:p-4" onClick={onClose}>
+      <div className="w-full sm:max-w-sm bg-bg border border-border rounded-t-2xl sm:rounded-xl flex flex-col max-h-[82vh]" onClick={e => e.stopPropagation()}>
         <div className="flex items-center justify-between px-5 py-4 border-b border-border shrink-0">
           <div>
             <h3 className="font-semibold text-base">{title}</h3>
@@ -57,19 +104,14 @@ export function CalendarPickerDialog({ token, title, description, onSelect, onCl
           {error && (
             <div className="text-center py-4 space-y-3">
               <p className="text-sm text-red-400">{error}</p>
-              <button
-                onClick={() => void supabase.auth.signInWithOAuth({
-                  provider: 'google',
-                  options: {
-                    redirectTo: window.location.origin + window.location.pathname,
-                    scopes: 'https://www.googleapis.com/auth/calendar',
-                    queryParams: { access_type: 'offline', prompt: 'consent' },
-                  },
-                })}
-                className="btn-primary text-sm"
-              >
-                כניסה מחדש עם Google
-              </button>
+              {showReconnect && (
+                <button
+                  onClick={() => { onAuthError?.(); void signInWithGoogleCalendar(); }}
+                  className="btn-primary text-sm"
+                >
+                  כניסה מחדש עם Google
+                </button>
+              )}
             </div>
           )}
           {!loading && !error && calendars.map(cal => (

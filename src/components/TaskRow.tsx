@@ -39,9 +39,10 @@ interface Props {
   onBeforeDelete?: (task: Task) => Promise<void>;
   onTaskSaved?: (task: Task) => Promise<void>;
   calendarToken?: string | null;
+  onCalendarAuthError?: () => void;
 }
 
-export function TaskRow({ task, project, projects, scope, onChange, isSelected, onSelect, isLastClosed, dragHandleListeners, dragHandleAttributes, onBeforeDelete, onTaskSaved, calendarToken }: Props) {
+export function TaskRow({ task, project, projects, scope, onChange, isSelected, onSelect, isLastClosed, dragHandleListeners, dragHandleAttributes, onBeforeDelete, onTaskSaved, calendarToken, onCalendarAuthError }: Props) {
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState<TaskDraft>(() => ({
     taskId: task.id,
@@ -342,6 +343,7 @@ export function TaskRow({ task, project, projects, scope, onChange, isSelected, 
         onSaved={onChange}
         onTaskSaved={onTaskSaved}
         calendarToken={calendarToken}
+        onCalendarAuthError={onCalendarAuthError}
       />
     )}
     </>

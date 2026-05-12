@@ -22,10 +22,11 @@ interface Props {
   token: string;
   prefs: UserPreferences | null;
   onSave: (patch: Partial<UserPreferences>) => Promise<void>;
+  onAuthError?: () => void;
   onClose: () => void;
 }
 
-export function CalendarSettingsDialog({ token, prefs, onSave, onClose }: Props) {
+export function CalendarSettingsDialog({ token, prefs, onSave, onAuthError, onClose }: Props) {
   const [calendarName, setCalendarName] = useState<string | null>(null);
   const [calendarId, setCalendarId] = useState<string | null>(prefs?.gcal_default_calendar_id ?? null);
   const [reminders, setReminders] = useState<number[]>(prefs?.gcal_reminders ?? [1440, 120]);
@@ -151,6 +152,7 @@ export function CalendarSettingsDialog({ token, prefs, onSave, onClose }: Props)
         title="בחר יומן ברירת מחדל"
         description="לכל המשימות (פרויקטים יכולים לעקוף ליומן ייעודי)"
         onSelect={(id, name) => { setCalendarId(id); setCalendarName(name); setShowPicker(false); }}
+        onAuthError={onAuthError}
         onClose={() => setShowPicker(false)}
       />
     )}
@@ -158,7 +160,7 @@ export function CalendarSettingsDialog({ token, prefs, onSave, onClose }: Props)
   );
 }
 
-export function CalendarFirstUseDialog({ token, onSave, onClose }: Omit<Props, 'prefs'>) {
+export function CalendarFirstUseDialog({ token, onSave, onAuthError, onClose }: Omit<Props, 'prefs'>) {
   return (
     <CalendarPickerDialog
       token={token}
@@ -168,6 +170,7 @@ export function CalendarFirstUseDialog({ token, onSave, onClose }: Omit<Props, '
         await onSave({ gcal_default_calendar_id: id });
         onClose();
       }}
+      onAuthError={onAuthError}
       onClose={onClose}
     />
   );

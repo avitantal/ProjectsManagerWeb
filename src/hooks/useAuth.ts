@@ -1,10 +1,16 @@
 import { useEffect, useRef, useState } from 'react';
 import type { Session } from '@supabase/supabase-js';
 import { supabase } from '../lib/supabase';
+import {
+  clearGoogleCalendarTokenCache,
+  GCAL_PROVIDER_REFRESH_TOKEN_KEY,
+  GCAL_PROVIDER_TOKEN_EXPIRY_KEY,
+  GCAL_PROVIDER_TOKEN_KEY,
+} from '../lib/googleAuth';
 
-const TOKEN_KEY         = 'gcal_provider_token';
-const EXPIRY_KEY        = 'gcal_provider_token_expiry';
-const REFRESH_TOKEN_KEY = 'gcal_provider_refresh_token';
+const TOKEN_KEY         = GCAL_PROVIDER_TOKEN_KEY;
+const EXPIRY_KEY        = GCAL_PROVIDER_TOKEN_EXPIRY_KEY;
+const REFRESH_TOKEN_KEY = GCAL_PROVIDER_REFRESH_TOKEN_KEY;
 const TTL_MS            = 55 * 60 * 1000; // 55 min — refresh before the 60 min Google expiry
 
 const EDGE_FN_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/refresh-gcal-token`;
@@ -25,9 +31,7 @@ function cacheTokens(accessToken: string, refreshToken?: string | null) {
 }
 
 function clearTokens() {
-  localStorage.removeItem(TOKEN_KEY);
-  localStorage.removeItem(EXPIRY_KEY);
-  localStorage.removeItem(REFRESH_TOKEN_KEY);
+  clearGoogleCalendarTokenCache();
 }
 
 // singleton — prevents duplicate concurrent refresh calls
@@ -50,7 +54,7 @@ async function doRefresh(): Promise<string | null> {
   });
 
   try {
-    let { data: { session } } = await supabase.auth.getSession();
+    const { data: { session } } = await supabase.auth.getSession();
     if (!session?.access_token) return null;
 
     let res = await callEdgeFn(session.access_token);
@@ -75,6 +79,12 @@ export function useAuth() {
   const [providerToken, setProviderToken] = useState<string | null>(() => readCachedToken());
   const refreshTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
+  function clearProviderToken() {
+    clearTokens();
+    setProviderToken(null);
+    if (refreshTimerRef.current) clearTimeout(refreshTimerRef.current);
+  }
+
   function scheduleRefresh() {
     if (refreshTimerRef.current) clearTimeout(refreshTimerRef.current);
     const expiry = Number(localStorage.getItem(EXPIRY_KEY) ?? 0);
@@ -84,6 +94,8 @@ export function useAuth() {
       if (newToken) {
         setProviderToken(newToken);
         scheduleRefresh();
+      } else {
+        clearProviderToken();
       }
     }, delay);
   }
@@ -120,9 +132,7 @@ export function useAuth() {
         scheduleRefresh();
       }
       if (evt === 'SIGNED_OUT') {
-        clearTokens();
-        setProviderToken(null);
-        if (refreshTimerRef.current) clearTimeout(refreshTimerRef.current);
+        clearProviderToken();
       }
     });
 
@@ -133,5 +143,5 @@ export function useAuth() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  return { session, loading, providerToken };
+  return { session, loading, providerToken, clearProviderToken };
 }

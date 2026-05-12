@@ -15,6 +15,75 @@ export interface CalendarEntry {
   summary: string;
 }
 
+interface GoogleErrorPayload {
+  error?: {
+    message?: string;
+    status?: string;
+    errors?: Array<{
+      message?: string;
+      reason?: string;
+    }>;
+  };
+}
+
+function parseGoogleError(body: string): GoogleErrorPayload | null {
+  try {
+    return JSON.parse(body) as GoogleErrorPayload;
+  } catch {
+    return null;
+  }
+}
+
+function includesAny(value: string, matches: string[]): boolean {
+  const lower = value.toLowerCase();
+  return matches.some(match => lower.includes(match.toLowerCase()));
+}
+
+export class GoogleCalendarError extends Error {
+  status: number;
+  body: string;
+  reason: string | null;
+
+  constructor(status: number, body: string) {
+    const payload = parseGoogleError(body);
+    const message = payload?.error?.message ?? body;
+    const reason = payload?.error?.errors?.[0]?.reason ?? payload?.error?.status ?? null;
+
+    super(`Google Calendar API ${status}: ${message}`);
+    this.name = 'GoogleCalendarError';
+    this.status = status;
+    this.body = body;
+    this.reason = reason;
+  }
+}
+
+export function isGoogleCalendarAuthError(error: unknown): boolean {
+  if (!(error instanceof GoogleCalendarError)) return false;
+  if (error.status === 401) return true;
+  if (error.status !== 403) return false;
+
+  const details = `${error.reason ?? ''} ${error.message} ${error.body}`;
+  return includesAny(details, [
+    'insufficient',
+    'insufficientPermissions',
+    'authError',
+    'authentication scopes',
+    'forbidden',
+  ]);
+}
+
+export function isGoogleCalendarConfigurationError(error: unknown): boolean {
+  if (!(error instanceof GoogleCalendarError) || error.status !== 403) return false;
+
+  const details = `${error.reason ?? ''} ${error.message} ${error.body}`;
+  return includesAny(details, [
+    'accessNotConfigured',
+    'has not been used in project',
+    'is disabled',
+    'enable it',
+  ]);
+}
+
 async function gcalFetch(token: string, path: string, options: RequestInit = {}) {
   const res = await fetch(`${BASE}${path}`, {
     ...options,
@@ -26,7 +95,7 @@ async function gcalFetch(token: string, path: string, options: RequestInit = {})
   });
   if (!res.ok) {
     const text = await res.text();
-    throw new Error(`Google Calendar API ${res.status}: ${text}`);
+    throw new GoogleCalendarError(res.status, text);
   }
   if (res.status === 204) return null;
   return res.json();
@@ -76,8 +145,8 @@ function buildEventPayload(task: Task, reminders: number[], projectName?: string
     // timed event: 1-hour block
     const startDateTime = `${date}T${task.due_time}:00`;
     const [h, m] = task.due_time.split(':').map(Number);
-    const endH = String(h + 1).padStart(2, '0');
-    const endM = String(m).padStart(2, '0');
+    const endH = h < 23 ? String(h + 1).padStart(2, '0') : '23';
+    const endM = h < 23 ? String(m).padStart(2, '0') : '59';
     const endDateTime = `${date}T${endH}:${endM}:00`;
     startSpec = { dateTime: startDateTime, timeZone: TZ };
     endSpec   = { dateTime: endDateTime,   timeZone: TZ };
@@ -95,10 +164,6 @@ function buildEventPayload(task: Task, reminders: number[], projectName?: string
     description,
     start: startSpec,
     end: endSpec,
-    source: {
-      title: 'ProjectsManager',
-      url: 'https://avitantal.github.io/ProjectsManagerWeb',
-    },
     reminders: {
       useDefault: false,
       overrides: reminders.map(minutes => ({ method: 'popup', minutes })),

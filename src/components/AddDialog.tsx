@@ -16,13 +16,14 @@ interface Props {
   onSaved: () => void;
   onTaskSaved?: (task: Task) => Promise<void>;
   calendarToken?: string | null;
+  onCalendarAuthError?: () => void;
 }
 
 function isTask(entity: Project | Task | undefined): entity is Task {
   return !!entity && 'project_id' in entity;
 }
 
-export function AddDialog({ scope, type, projects, defaultProjectId, editing, onClose, onSaved, onTaskSaved, calendarToken }: Props) {
+export function AddDialog({ scope, type, projects, defaultProjectId, editing, onClose, onSaved, onTaskSaved, calendarToken, onCalendarAuthError }: Props) {
   const editMode = !!editing;
   const editingTask = isTask(editing) ? editing : undefined;
   const editingProject = !isTask(editing) ? (editing as Project | undefined) : undefined;
@@ -267,6 +268,7 @@ export function AddDialog({ scope, type, projects, defaultProjectId, editing, on
         title="בחר יומן לפרויקט"
         description="משימות הפרויקט יסונכרנו ליומן שתבחר"
         onSelect={handleCalendarSelected}
+        onAuthError={onCalendarAuthError}
         onClose={() => setShowCalendarPicker(false)}
       />
     )}

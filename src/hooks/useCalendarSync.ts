@@ -1,11 +1,13 @@
 import { useCallback, useEffect, useState } from 'react';
+import type { Session } from '@supabase/supabase-js';
 import { toast } from 'sonner';
 import { supabase, type Task, type Project, type Scope, type UserPreferences } from '../lib/supabase';
-import { useAuth } from './useAuth';
 import {
   createEvent,
   updateEvent,
   deleteEvent,
+  isGoogleCalendarAuthError,
+  isGoogleCalendarConfigurationError,
 } from '../lib/googleCalendar';
 
 const DEFAULT_REMINDERS = [1440, 120];
@@ -28,8 +30,11 @@ async function savePrefs(userId: string, patch: Partial<UserPreferences>): Promi
   return data as UserPreferences;
 }
 
-export function useCalendarSync() {
-  const { session, providerToken } = useAuth();
+export function useCalendarSync(
+  session: Session | null,
+  providerToken: string | null,
+  onCalendarAuthError?: () => void,
+) {
   const [prefs, setPrefs] = useState<UserPreferences | null>(null);
   const [needsCalendarSetup, setNeedsCalendarSetup] = useState(false);
   const [, setPendingFreeTasks] = useState<Array<{ task: Task; scope: Scope }>>([]);
@@ -54,7 +59,6 @@ export function useCalendarSync() {
       const proj = projects.find(p => p.id === task.project_id);
       if (proj?.sync_to_calendar && proj.gcal_calendar_id) return proj.gcal_calendar_id;
     }
-    // user-configured default, or fall back to Google's built-in 'primary' calendar
     return prefs?.gcal_default_calendar_id ?? 'primary';
   }
 
@@ -69,16 +73,14 @@ export function useCalendarSync() {
     projects: Project[],
   ): Promise<string | null> {
     if (!token) {
-      toast.warning('יש להתחבר לגוגל קלנדר');
+      toast.warning('יש להתחבר ל-Google Calendar');
       return null;
     }
 
     const calendarId = resolveCalendarId(task, projects);
-
     const reminders = prefs?.gcal_reminders ?? DEFAULT_REMINDERS;
     const projectName = resolveProjectName(task, projects);
 
-    // delete old event if due_date removed
     if (!task.due_date) {
       if (task.gcal_event_id) {
         try { await deleteEvent(token, calendarId, task.gcal_event_id); } catch { /* already gone */ }
@@ -90,18 +92,26 @@ export function useCalendarSync() {
     try {
       if (task.gcal_event_id) {
         await updateEvent(token, calendarId, task.gcal_event_id, task, reminders, projectName);
-        toast.success('אירוע עודכן בגוגל קלנדר');
+        toast.success('אירוע עודכן ב-Google Calendar');
         return task.gcal_event_id;
-      } else {
-        const eventId = await createEvent(token, calendarId, task, reminders, projectName);
-        await supabase.from(`${scope}_tasks`).update({ gcal_event_id: eventId }).eq('id', task.id);
-        toast.success('משימה נוספה לגוגל קלנדר');
-        return eventId;
       }
+
+      const eventId = await createEvent(token, calendarId, task, reminders, projectName);
+      await supabase.from(`${scope}_tasks`).update({ gcal_event_id: eventId }).eq('id', task.id);
+      toast.success('משימה נוספה ל-Google Calendar');
+      return eventId;
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err);
       console.error('Calendar sync failed:', msg);
-      toast.error(`סנכרון נכשל: ${msg.slice(0, 80)}`);
+
+      if (isGoogleCalendarAuthError(err)) {
+        onCalendarAuthError?.();
+        toast.error('סנכרון נכשל: צריך להתחבר מחדש ל-Google Calendar');
+      } else if (isGoogleCalendarConfigurationError(err)) {
+        toast.error('סנכרון נכשל: Google Calendar API לא פעיל בפרויקט ה-OAuth');
+      } else {
+        toast.error(`סנכרון נכשל: ${msg.slice(0, 80)}`);
+      }
       return null;
     }
   }
@@ -113,8 +123,7 @@ export function useCalendarSync() {
     try { await deleteEvent(token, calendarId, task.gcal_event_id); } catch { /* already gone */ }
   }
 
-  async function flushPending(_calendarId: string, _targetScope: Scope) {
-    // no-op: tasks now sync immediately to 'primary' — no queuing needed
+  async function flushPending() {
     setPendingFreeTasks([]);
   }
 
