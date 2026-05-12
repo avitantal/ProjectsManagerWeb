@@ -99,8 +99,9 @@ export function useCalendarSync() {
         return eventId;
       }
     } catch (err) {
-      console.error('Calendar sync failed:', err);
-      toast.error('סנכרון קלנדר נכשל');
+      const msg = err instanceof Error ? err.message : String(err);
+      console.error('Calendar sync failed:', msg);
+      toast.error(`סנכרון נכשל: ${msg.slice(0, 80)}`);
       return null;
     }
   }
