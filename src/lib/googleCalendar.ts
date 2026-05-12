@@ -143,13 +143,14 @@ function buildEventPayload(task: Task, reminders: number[], projectName?: string
 
   if (task.due_time) {
     // timed event: 1-hour block
-    const startDateTime = `${date}T${task.due_time}:00`;
-    const [h, m] = task.due_time.split(':').map(Number);
+    const hhmm = task.due_time.slice(0, 5); // normalize "HH:MM:SS" → "HH:MM"
+    const startDateTime = `${date}T${hhmm}:00`;
+    const [h, m] = hhmm.split(':').map(Number);
     const endH = h < 23 ? String(h + 1).padStart(2, '0') : '23';
     const endM = h < 23 ? String(m).padStart(2, '0') : '59';
     const endDateTime = `${date}T${endH}:${endM}:00`;
-    startSpec = { dateTime: startDateTime, timeZone: TZ };
-    endSpec   = { dateTime: endDateTime,   timeZone: TZ };
+    startSpec = { dateTime: startDateTime,  timeZone: TZ };
+    endSpec   = { dateTime: endDateTime,    timeZone: TZ };
   } else {
     // all-day event
     const nextDay = new Date(date);
