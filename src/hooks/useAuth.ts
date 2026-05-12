@@ -30,15 +30,18 @@ function clearTokens() {
   localStorage.removeItem(REFRESH_TOKEN_KEY);
 }
 
-async function refreshAccessToken(supabaseJwt: string): Promise<string | null> {
+async function refreshAccessToken(): Promise<string | null> {
   const refreshToken = localStorage.getItem(REFRESH_TOKEN_KEY);
   if (!refreshToken) return null;
   try {
+    // always fetch a fresh Supabase JWT — the cached one may have expired
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!session?.access_token) return null;
     const res = await fetch(EDGE_FN_URL, {
       method:  'POST',
       headers: {
         'Content-Type':  'application/json',
-        'Authorization': `Bearer ${supabaseJwt}`,
+        'Authorization': `Bearer ${session.access_token}`,
       },
       body: JSON.stringify({ refresh_token: refreshToken }),
     });
@@ -58,16 +61,15 @@ export function useAuth() {
   const [providerToken, setProviderToken] = useState<string | null>(() => readCachedToken());
   const refreshTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  function scheduleRefresh(supabaseJwt: string) {
+  function scheduleRefresh() {
     if (refreshTimerRef.current) clearTimeout(refreshTimerRef.current);
-    // refresh 5 minutes before expiry
     const expiry = Number(localStorage.getItem(EXPIRY_KEY) ?? 0);
     const delay  = Math.max(0, expiry - Date.now() - 5 * 60 * 1000);
     refreshTimerRef.current = setTimeout(async () => {
-      const newToken = await refreshAccessToken(supabaseJwt);
+      const newToken = await refreshAccessToken();
       if (newToken) {
         setProviderToken(newToken);
-        scheduleRefresh(supabaseJwt);
+        scheduleRefresh();
       }
     }, delay);
   }
@@ -79,17 +81,16 @@ export function useAuth() {
       if (s?.provider_token) {
         cacheTokens(s.provider_token, s.provider_refresh_token);
         setProviderToken(s.provider_token);
-        scheduleRefresh(s.access_token);
+        scheduleRefresh();
       } else if (s?.access_token) {
         const cached = readCachedToken();
         if (cached) {
-          scheduleRefresh(s.access_token);
+          scheduleRefresh();
         } else if (localStorage.getItem(REFRESH_TOKEN_KEY)) {
-          // token expired on page load but refresh_token exists — renew immediately
-          refreshAccessToken(s.access_token).then(newToken => {
+          refreshAccessToken().then(newToken => {
             if (newToken) {
               setProviderToken(newToken);
-              scheduleRefresh(s.access_token);
+              scheduleRefresh();
             }
           });
         }
@@ -102,7 +103,7 @@ export function useAuth() {
       if (s?.provider_token) {
         cacheTokens(s.provider_token, s.provider_refresh_token);
         setProviderToken(s.provider_token);
-        if (s.access_token) scheduleRefresh(s.access_token);
+        scheduleRefresh();
       }
       if (evt === 'SIGNED_OUT') {
         clearTokens();
