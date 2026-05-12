@@ -80,8 +80,19 @@ export function useAuth() {
         cacheTokens(s.provider_token, s.provider_refresh_token);
         setProviderToken(s.provider_token);
         scheduleRefresh(s.access_token);
-      } else if (readCachedToken() && s?.access_token) {
-        scheduleRefresh(s.access_token);
+      } else if (s?.access_token) {
+        const cached = readCachedToken();
+        if (cached) {
+          scheduleRefresh(s.access_token);
+        } else if (localStorage.getItem(REFRESH_TOKEN_KEY)) {
+          // token expired on page load but refresh_token exists — renew immediately
+          refreshAccessToken(s.access_token).then(newToken => {
+            if (newToken) {
+              setProviderToken(newToken);
+              scheduleRefresh(s.access_token);
+            }
+          });
+        }
       }
       setLoading(false);
     });
