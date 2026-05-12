@@ -72,7 +72,7 @@ export function CalendarSettingsDialog({ token, prefs, onSave, onClose }: Props)
         <div className="flex-1 overflow-y-auto p-6 space-y-6">
           {/* Default calendar */}
           <div>
-            <h3 className="text-sm font-medium mb-2">יומן ברירת מחדל (למשימות ללא פרויקט)</h3>
+            <h3 className="text-sm font-medium mb-2">יומן ברירת מחדל לכל המשימות</h3>
             <div className="flex items-center gap-2">
               <span className="flex-1 text-sm text-text/80 truncate border border-border rounded-lg px-3 py-2 bg-surface">
                 {displayName}
@@ -149,7 +149,7 @@ export function CalendarSettingsDialog({ token, prefs, onSave, onClose }: Props)
       <CalendarPickerDialog
         token={token}
         title="בחר יומן ברירת מחדל"
-        description="למשימות ללא פרויקט"
+        description="לכל המשימות (פרויקטים יכולים לעקוף ליומן ייעודי)"
         onSelect={(id, name) => { setCalendarId(id); setCalendarName(name); setShowPicker(false); }}
         onClose={() => setShowPicker(false)}
       />
@@ -163,7 +163,7 @@ export function CalendarFirstUseDialog({ token, onSave, onClose }: Omit<Props, '
     <CalendarPickerDialog
       token={token}
       title="בחר יומן לסינכרון"
-      description="משימות ללא פרויקט יסונכרנו ליומן שתבחר. ניתן לשנות בכל עת מהגדרות קלנדר."
+      description="כל המשימות יסונכרנו ליומן שתבחר. פרויקטים יכולים לעקוף ליומן ייעודי. ניתן לשנות מהגדרות קלנדר."
       onSelect={async (id) => {
         await onSave({ gcal_default_calendar_id: id });
         onClose();
