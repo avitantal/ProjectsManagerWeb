@@ -177,6 +177,7 @@ export function useCalendarSync(
 
     async function syncAllPending() {
       let synced = 0;
+      let removed = 0;
       for (const scope of ALL_SCOPES) {
         const [{ data: tasks }, { data: allProjects }] = await Promise.all([
           supabase.from(`${scope}_tasks`).select('*').not('due_date', 'is', null).is('gcal_event_id', null),
@@ -199,10 +200,27 @@ export function useCalendarSync(
           const result = await syncProject(project, scope, { silent: true });
           if (result) synced++;
         }
+
+        // Remove calendar events for frozen projects that still have gcal_event_id
+        const { data: frozenProjects } = await supabase
+          .from(`${scope}_projects`)
+          .select('*')
+          .eq('status', 'frozen')
+          .not('gcal_event_id', 'is', null);
+
+        for (const project of (frozenProjects ?? []) as Project[]) {
+          const calendarId = project.gcal_calendar_id ?? prefs?.gcal_default_calendar_id ?? 'primary';
+          try { await deleteEvent(token!, calendarId, project.gcal_event_id!); } catch { /* already gone */ }
+          await supabase.from(`${scope}_projects`).update({ gcal_event_id: null }).eq('id', project.id);
+          removed++;
+        }
       }
 
       if (synced > 0) {
         toast.success(`סונכרנו ${synced} אירועים ל-Google Calendar`);
+      }
+      if (removed > 0) {
+        toast.success(`הוסרו ${removed} פרויקטים מ-Google Calendar`);
       }
     }
 
