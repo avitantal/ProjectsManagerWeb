@@ -39,6 +39,7 @@ export function useCalendarSync(
   onCalendarAuthError?: () => void,
 ) {
   const [prefs, setPrefs] = useState<UserPreferences | null>(null);
+  const [prefsLoaded, setPrefsLoaded] = useState(false);
   const [needsCalendarSetup, setNeedsCalendarSetup] = useState(false);
   const [, setPendingFreeTasks] = useState<Array<{ task: Task; scope: Scope }>>([]);
   const hasSyncedOnLogin = useRef(false);
@@ -47,8 +48,11 @@ export function useCalendarSync(
   const userId = session?.user?.id ?? null;
 
   useEffect(() => {
-    if (!userId) return;
-    loadPrefs(userId).then(p => setPrefs(p));
+    if (!userId) { setPrefsLoaded(false); return; }
+    loadPrefs(userId).then(p => {
+      setPrefs(p);
+      setPrefsLoaded(true);
+    });
   }, [userId]);
 
   const updatePrefs = useCallback(async (patch: Partial<UserPreferences>) => {
@@ -158,12 +162,14 @@ export function useCalendarSync(
     }
   }
 
-  // On login: sync all tasks/projects that have due_date but no gcal_event_id
+  // On page load: sync all tasks/projects that have due_date but no gcal_event_id.
+  // Waits for prefs to load so the correct calendar IDs are used.
   useEffect(() => {
     if (!token || !userId) {
       hasSyncedOnLogin.current = false;
       return;
     }
+    if (!prefsLoaded) return;
     if (hasSyncedOnLogin.current) return;
     hasSyncedOnLogin.current = true;
 
@@ -200,7 +206,7 @@ export function useCalendarSync(
 
     void syncAllPending();
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [token, userId]);
+  }, [token, userId, prefsLoaded]);
 
   async function removeTaskEvent(task: Task, _taskScope: Scope, taskProjects: Project[]) {
     if (!token || !task.gcal_event_id) return;
