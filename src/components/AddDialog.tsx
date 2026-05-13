@@ -120,7 +120,7 @@ export function AddDialog({ scope, type, projects, defaultProjectId, editing, on
     if (savedTask && onTaskSaved && calendarToken) {
       await onTaskSaved(savedTask).catch(() => {});
     }
-    if (savedProject && onProjectSaved && syncToCalendar && savedProject.due_date) {
+    if (savedProject && onProjectSaved && syncToCalendar) {
       await onProjectSaved(savedProject).catch(() => {});
     }
 
