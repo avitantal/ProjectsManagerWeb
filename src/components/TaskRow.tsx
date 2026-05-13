@@ -121,6 +121,7 @@ export function TaskRow({ task, project, projects, scope, onChange, isSelected, 
 
   async function remove() {
     if (allowPermDelete) {
+      if (onBeforeDelete) await onBeforeDelete(task).catch(() => {});
       await supabase.from(`${scope}_tasks`).delete().eq('id', task.id);
     } else {
       if (onBeforeDelete) await onBeforeDelete(task).catch(() => {});
