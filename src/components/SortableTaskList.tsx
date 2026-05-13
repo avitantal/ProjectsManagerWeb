@@ -17,6 +17,7 @@ interface SortableItemProps {
   onTaskSaved?: (task: Task) => Promise<void>;
   calendarToken?: string | null;
   onCalendarAuthError?: () => void;
+  allowPermDelete?: boolean;
 }
 
 function SortableItem({ task, ...props }: SortableItemProps) {
