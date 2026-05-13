@@ -36,9 +36,10 @@ interface Props {
   calendarToken?: string | null;
   onCalendarAuthError?: () => void;
   onProjectSaved?: (project: Project) => Promise<void>;
+  onBeforeDelete?: (project: Project) => Promise<void>;
 }
 
-export function ProjectCard({ project, scope, progress, fileCount, onChange, allowPermDelete, calendarToken, onCalendarAuthError, onProjectSaved }: Props) {
+export function ProjectCard({ project, scope, progress, fileCount, onChange, allowPermDelete, calendarToken, onCalendarAuthError, onProjectSaved, onBeforeDelete }: Props) {
   const days = daysUntil(project.due_date);
   const overdue = days !== null && days < 0;
   const [statusDraft, setStatusDraft] = useState<StatusDraft>(() => ({
@@ -85,6 +86,7 @@ export function ProjectCard({ project, scope, progress, fileCount, onChange, all
   }
 
   async function remove() {
+    if (onBeforeDelete) await onBeforeDelete(project).catch(() => {});
     if (allowPermDelete) {
       await supabase.from(`${scope}_tasks`).delete().eq('project_id', project.id);
       await supabase.from(`${scope}_projects`).delete().eq('id', project.id);

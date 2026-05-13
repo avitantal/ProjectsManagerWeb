@@ -215,6 +215,12 @@ export function useCalendarSync(
     try { await deleteEvent(token, calendarId, task.gcal_event_id); } catch { /* already gone */ }
   }
 
+  async function removeProjectEvent(project: Project) {
+    if (!token || !project.gcal_event_id) return;
+    const calendarId = project.gcal_calendar_id ?? prefs?.gcal_default_calendar_id ?? 'primary';
+    try { await deleteEvent(token, calendarId, project.gcal_event_id); } catch { /* already gone */ }
+  }
+
   async function flushPending() {
     setPendingFreeTasks([]);
   }
@@ -223,6 +229,7 @@ export function useCalendarSync(
     syncTask,
     syncProject,
     removeTaskEvent,
+    removeProjectEvent,
     prefs,
     updatePrefs,
     needsCalendarSetup,
