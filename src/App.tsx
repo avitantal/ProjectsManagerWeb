@@ -64,7 +64,7 @@ function ScopeView({ scope, setScope, session, providerToken, onCalendarAuthErro
   const { syncTask, syncProject, removeTaskEvent, removeProjectEvent, prefs, updatePrefs, needsCalendarSetup, setNeedsCalendarSetup, flushPending, isCalendarReady } = useCalendarSync(session, providerToken, onCalendarAuthError);
   const calendarToken = providerToken;
   const [showCalendarSettings, setShowCalendarSettings] = useState(false);
-  type View = 'projects' | 'projects-done' | 'projects-frozen' | 'orphans' | 'orphans-done';
+  type View = 'projects' | 'projects-done' | 'projects-frozen' | 'orphans' | 'orphans-done' | 'orphans-frozen';
   const [filterProjectId, setFilterProjectId] = useState<number | null>(null);
   const [view, setView] = useState<View>(
     () => (localStorage.getItem(`view:${scope}`) as View) ?? 'projects',
@@ -125,6 +125,7 @@ function ScopeView({ scope, setScope, session, providerToken, onCalendarAuthErro
   const doneProjectTasks  = useMemo(() => tasks.filter(t => t.project_id && doneProjectIds.has(t.project_id)), [doneProjectIds, tasks]);
   const frozenProjectTasks = useMemo(() => tasks.filter(t => t.project_id && frozenProjectIds.has(t.project_id)), [frozenProjectIds, tasks]);
   const doneTasksOrphan    = useMemo(() => tasks.filter(t => t.status === 'done' && !t.project_id), [tasks]);
+  const frozenTasksOrphan  = useMemo(() => tasks.filter(t => t.status === 'frozen' && !t.project_id), [tasks]);
 
   useEffect(() => {
     if (view !== 'projects' || filterProjectId === null || activeProjectIds.has(filterProjectId)) return;
@@ -215,7 +216,8 @@ function ScopeView({ scope, setScope, session, providerToken, onCalendarAuthErro
     if (view === 'projects-done')   return doneProjectTasks;
     if (view === 'projects-frozen') return frozenProjectTasks;
     if (view === 'orphans-done')    return doneTasksOrphan;
-    if (view === 'orphans')         return hide(tasks.filter(t => !t.project_id));
+    if (view === 'orphans-frozen')  return frozenTasksOrphan;
+    if (view === 'orphans')         return hide(tasks.filter(t => !t.project_id && t.status !== 'frozen'));
     if (filterProjectId !== null)   return hide(tasks.filter(t => t.project_id === filterProjectId));
     return hide(activeProjectTasks);
   })();
@@ -244,7 +246,7 @@ function ScopeView({ scope, setScope, session, providerToken, onCalendarAuthErro
               title={session.user.email ?? ''}
             >
               🎯 ניהול פרויקטים
-              <span className="text-[10px] font-normal text-muted/70" dir="ltr">V1.51</span>
+              <span className="text-[10px] font-normal text-muted/70" dir="ltr">V1.52</span>
             </button>
             {menuOpen && (
               <div className="absolute top-full right-0 mt-1 min-w-[160px] card p-1 z-50 shadow-lg" role="menu">
@@ -317,7 +319,7 @@ function ScopeView({ scope, setScope, session, providerToken, onCalendarAuthErro
             </button>
             <button
               onClick={() => setViewPersisted('orphans')}
-              className={cn('btn text-sm px-3 py-1.5', ['orphans','orphans-done'].includes(view) ? 'bg-accent text-white' : 'text-muted hover:text-text')}
+              className={cn('btn text-sm px-3 py-1.5', ['orphans','orphans-done','orphans-frozen'].includes(view) ? 'bg-accent text-white' : 'text-muted hover:text-text')}
             >
               <ListTodo size={14} /> ללא פרויקט
             </button>
@@ -339,7 +341,7 @@ function ScopeView({ scope, setScope, session, providerToken, onCalendarAuthErro
               ))}
             </div>
           )}
-          {['orphans','orphans-done'].includes(view) && (
+          {['orphans','orphans-done','orphans-frozen'].includes(view) && (
             <div className="flex items-center gap-3">
               <button onClick={() => setViewPersisted('orphans-done')}
                 className={cn('flex items-center gap-1 text-xs transition-colors', view === 'orphans-done' ? 'text-accent' : 'text-muted/60 hover:text-muted')}
@@ -347,16 +349,23 @@ function ScopeView({ scope, setScope, session, providerToken, onCalendarAuthErro
                 <CheckCircle2 size={12} /> הושלמו
                 {doneTasksOrphan.length > 0 && <span className={cn('text-[10px] rounded-full px-1.5 leading-5 font-semibold', view === 'orphans-done' ? 'bg-accent/20 text-accent' : 'bg-surface text-muted')}>{doneTasksOrphan.length}</span>}
               </button>
+              <button onClick={() => setViewPersisted('orphans-frozen')}
+                className={cn('flex items-center gap-1 text-xs transition-colors', view === 'orphans-frozen' ? 'text-accent' : 'text-muted/60 hover:text-muted')}
+              >
+                <Archive size={12} /> מחוקים
+                {frozenTasksOrphan.length > 0 && <span className={cn('text-[10px] rounded-full px-1.5 leading-5 font-semibold', view === 'orphans-frozen' ? 'bg-accent/20 text-accent' : 'bg-surface text-muted')}>{frozenTasksOrphan.length}</span>}
+              </button>
             </div>
           )}
         </div>
 
         {(() => {
           const isActive = view === 'projects' || view === 'orphans';
+          const isOrphansFrozen = view === 'orphans-frozen';
           const showProjectsCol = ['projects','projects-done','projects-frozen'].includes(view);
           const showTasksCol = true;
           const projectsHeading = view === 'projects-done' ? 'פרויקטים שהושלמו' : view === 'projects-frozen' ? 'פרויקטים מחוקים' : 'פרויקטים';
-          const tasksHeading = view === 'projects-done' ? 'משימות בפרויקטים שהושלמו' : view === 'orphans-done' ? 'משימות שהושלמו' : view === 'projects-frozen' ? 'משימות מחוקות' : 'משימות';
+          const tasksHeading = view === 'projects-done' ? 'משימות בפרויקטים שהושלמו' : view === 'orphans-done' ? 'משימות שהושלמו' : view === 'projects-frozen' ? 'משימות מחוקות' : view === 'orphans-frozen' ? 'משימות מחוקות' : 'משימות';
 
           return (
             <div className={cn('grid grid-cols-1 gap-6', showProjectsCol && showTasksCol && 'lg:grid-cols-[1fr,1.5fr]')}>
@@ -437,6 +446,7 @@ function ScopeView({ scope, setScope, session, providerToken, onCalendarAuthErro
                     onSelect={id => setSelectedTaskId(id)}
                     lastClosedTaskId={lastClosedTaskId}
                     projectsById={projectsById}
+                    allowPermDelete={isOrphansFrozen}
                     onBeforeDelete={task => removeTaskEvent(task, scope, projects)}
                     onTaskSaved={async task => { await syncTask(task, scope, projects); }}
                     calendarToken={calendarToken}

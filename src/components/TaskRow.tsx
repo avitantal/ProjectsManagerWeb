@@ -40,9 +40,10 @@ interface Props {
   onTaskSaved?: (task: Task) => Promise<void>;
   calendarToken?: string | null;
   onCalendarAuthError?: () => void;
+  allowPermDelete?: boolean;
 }
 
-export function TaskRow({ task, project, projects, scope, onChange, isSelected, onSelect, isLastClosed, dragHandleListeners, dragHandleAttributes, onBeforeDelete, onTaskSaved, calendarToken, onCalendarAuthError }: Props) {
+export function TaskRow({ task, project, projects, scope, onChange, isSelected, onSelect, isLastClosed, dragHandleListeners, dragHandleAttributes, onBeforeDelete, onTaskSaved, calendarToken, onCalendarAuthError, allowPermDelete }: Props) {
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState<TaskDraft>(() => ({
     taskId: task.id,
@@ -119,8 +120,12 @@ export function TaskRow({ task, project, projects, scope, onChange, isSelected, 
   }
 
   async function remove() {
-    if (onBeforeDelete) await onBeforeDelete(task).catch(() => {/* calendar errors non-blocking */});
-    await supabase.from(`${scope}_tasks`).delete().eq('id', task.id);
+    if (allowPermDelete) {
+      await supabase.from(`${scope}_tasks`).delete().eq('id', task.id);
+    } else {
+      if (onBeforeDelete) await onBeforeDelete(task).catch(() => {});
+      await supabase.from(`${scope}_tasks`).update({ status: 'frozen' }).eq('id', task.id);
+    }
     setConfirmingDeleteId(null);
     onChange();
   }
@@ -268,6 +273,16 @@ export function TaskRow({ task, project, projects, scope, onChange, isSelected, 
             >
               <RotateCcw size={14} />
             </button>
+            {allowPermDelete && (confirmingDelete ? (
+              <div className="flex items-center gap-1 shrink-0">
+                <button type="button" onClick={() => void remove()} className="rounded-md bg-red-500/20 px-2 py-1 text-xs text-red-200 hover:bg-red-500/30">מחק לצמיתות</button>
+                <button type="button" onClick={() => setConfirmingDeleteId(null)} className="rounded-md px-2 py-1 text-xs text-muted hover:bg-surface hover:text-text">בטל</button>
+              </div>
+            ) : (
+              <button type="button" onClick={() => setConfirmingDeleteId(task.id)} className="text-muted hover:text-red-400" aria-label="מחק לצמיתות" title="מחק לצמיתות">
+                <Trash2 size={14} />
+              </button>
+            ))}
           </div>
         ) : confirmingDelete ? (
           <div className="flex items-center gap-1 shrink-0">

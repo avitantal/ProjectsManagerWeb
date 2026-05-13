@@ -55,9 +55,10 @@ interface Props {
   onTaskSaved?: (task: Task) => Promise<void>;
   calendarToken?: string | null;
   onCalendarAuthError?: () => void;
+  allowPermDelete?: boolean;
 }
 
-export function SortableTaskList({ tasks, projects, scope, onChange, onReorder, selectedTaskId, onSelect, lastClosedTaskId, projectsById, onBeforeDelete, onTaskSaved, calendarToken, onCalendarAuthError }: Props) {
+export function SortableTaskList({ tasks, projects, scope, onChange, onReorder, selectedTaskId, onSelect, lastClosedTaskId, projectsById, onBeforeDelete, onTaskSaved, calendarToken, onCalendarAuthError, allowPermDelete }: Props) {
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 8 } }),
   );
@@ -92,6 +93,7 @@ export function SortableTaskList({ tasks, projects, scope, onChange, onReorder, 
               onTaskSaved={onTaskSaved}
               calendarToken={calendarToken}
               onCalendarAuthError={onCalendarAuthError}
+              allowPermDelete={allowPermDelete}
             />
           ))}
         </div>
