@@ -94,6 +94,7 @@ export function useCalendarSync(
       if (task.gcal_event_id) {
         try { await deleteEvent(token, calendarId, task.gcal_event_id); } catch { /* already gone */ }
         await supabase.from(`${scope}_tasks`).update({ gcal_event_id: null }).eq('id', task.id);
+        if (!opts?.silent) toast.success('אירוע הוסר מ-Google Calendar');
       }
       return null;
     }
@@ -134,6 +135,7 @@ export function useCalendarSync(
       if (project.gcal_event_id) {
         try { await deleteEvent(token, calendarId, project.gcal_event_id); } catch { /* already gone */ }
         await supabase.from(`${scope}_projects`).update({ gcal_event_id: null }).eq('id', project.id);
+        if (!opts?.silent) toast.success('אירוע הוסר מ-Google Calendar');
       }
       return null;
     }
