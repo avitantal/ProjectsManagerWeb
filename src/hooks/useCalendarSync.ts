@@ -191,7 +191,7 @@ export function useCalendarSync(
           .select('*')
           .not('due_date', 'is', null)
           .is('gcal_event_id', null)
-          .eq('sync_to_calendar', true);
+          .or('sync_to_calendar.eq.true,sync_to_calendar.is.null');
 
         for (const project of (pendingProjects ?? []) as Project[]) {
           const result = await syncProject(project, scope, { silent: true });
