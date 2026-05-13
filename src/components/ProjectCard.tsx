@@ -120,8 +120,8 @@ export function ProjectCard({ project, scope, progress, fileCount, onChange, all
       <div style={{ transform: `translateX(-${swipeX}px)`, transition: swipeX === 0 ? 'transform 0.2s ease' : 'none' }}>
     <div className="card p-2.5 hover:border-zinc-600 transition-colors group relative overflow-hidden">
       <div
-        className="absolute inset-y-0 right-0 bg-accent/8 rounded-xl transition-all duration-500 pointer-events-none"
-        style={{ width: `${progressPercent}%` }}
+        className="absolute top-0 right-0 w-[3px] bg-accent/60 rounded-r-xl transition-all duration-500 pointer-events-none"
+        style={{ height: `${progressPercent}%` }}
       />
       <div className="relative flex items-start justify-between gap-2 mb-1.5">
         <h3 className="font-medium text-text leading-tight text-sm flex items-center gap-1.5">
