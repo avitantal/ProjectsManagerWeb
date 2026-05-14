@@ -180,7 +180,7 @@ export function useCalendarSync(
       let removed = 0;
       for (const scope of ALL_SCOPES) {
         const [{ data: tasks }, { data: allProjects }] = await Promise.all([
-          supabase.from(`${scope}_tasks`).select('*').not('due_date', 'is', null).is('gcal_event_id', null),
+          supabase.from(`${scope}_tasks`).select('*').not('due_date', 'is', null).is('gcal_event_id', null).neq('status', 'frozen'),
           supabase.from(`${scope}_projects`).select('*'),
         ]);
 
@@ -194,7 +194,8 @@ export function useCalendarSync(
           .select('*')
           .not('due_date', 'is', null)
           .is('gcal_event_id', null)
-          .or('sync_to_calendar.eq.true,sync_to_calendar.is.null');
+          .or('sync_to_calendar.eq.true,sync_to_calendar.is.null')
+          .neq('status', 'frozen');
 
         for (const project of (pendingProjects ?? []) as Project[]) {
           const result = await syncProject(project, scope, { silent: true });
