@@ -134,6 +134,9 @@ export function TaskRow({ task, project, projects, scope, onChange, isSelected, 
   async function restore() {
     await supabase.from(`${scope}_tasks`).update({ status: 'todo' }).eq('id', task.id);
     onChange();
+    if (onTaskSaved && task.due_date) {
+      await onTaskSaved({ ...task, status: 'todo' });
+    }
   }
 
   async function saveNotes() {

@@ -229,7 +229,7 @@ export function useCalendarSync(
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [token, userId, prefsLoaded]);
 
-  async function removeTaskEvent(task: Task, _taskScope: Scope, taskProjects: Project[]) {
+  async function removeTaskEvent(task: Task, taskScope: Scope, taskProjects: Project[]) {
     if (!token || !task.gcal_event_id) return;
     const calendarId = resolveCalendarId(task, taskProjects);
     if (!calendarId) return;
@@ -237,12 +237,22 @@ export function useCalendarSync(
       await deleteEvent(token, calendarId, task.gcal_event_id);
       toast.success('אירוע הוסר מ-Google Calendar');
     } catch { /* already gone */ }
+    await supabase.from(`${taskScope}_tasks`).update({ gcal_event_id: null }).eq('id', task.id);
   }
 
-  async function removeProjectEvent(project: Project) {
-    if (!token || !project.gcal_event_id) return;
+  async function removeProjectEvent(project: Project, projectScope: Scope, childTasks: Task[]) {
     const calendarId = project.gcal_calendar_id ?? prefs?.gcal_default_calendar_id ?? 'primary';
-    try { await deleteEvent(token, calendarId, project.gcal_event_id); } catch { /* already gone */ }
+    if (token && project.gcal_event_id) {
+      try { await deleteEvent(token, calendarId, project.gcal_event_id); } catch { /* already gone */ }
+      await supabase.from(`${projectScope}_projects`).update({ gcal_event_id: null }).eq('id', project.id);
+    }
+    const tasksWithEvent = childTasks.filter(t => t.gcal_event_id);
+    await Promise.all(tasksWithEvent.map(async t => {
+      if (token) {
+        try { await deleteEvent(token, resolveCalendarId(t, [project]), t.gcal_event_id!); } catch { /* already gone */ }
+      }
+      await supabase.from(`${projectScope}_tasks`).update({ gcal_event_id: null }).eq('id', t.id);
+    }));
   }
 
   async function flushPending() {

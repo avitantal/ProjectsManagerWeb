@@ -102,6 +102,9 @@ export function ProjectCard({ project, scope, progress, fileCount, onChange, all
     await supabase.from(`${scope}_tasks`).update({ status: 'todo' }).eq('project_id', project.id).eq('status', 'frozen');
     await supabase.from(`${scope}_projects`).update({ status: 'planned' }).eq('id', project.id);
     onChange();
+    if (onProjectSaved && project.due_date) {
+      await onProjectSaved({ ...project, status: 'planned' });
+    }
   }
 
   function updateDraftStatus(status: ProjectStatus) {
