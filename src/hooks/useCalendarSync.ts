@@ -233,7 +233,10 @@ export function useCalendarSync(
     if (!token || !task.gcal_event_id) return;
     const calendarId = resolveCalendarId(task, taskProjects);
     if (!calendarId) return;
-    try { await deleteEvent(token, calendarId, task.gcal_event_id); } catch { /* already gone */ }
+    try {
+      await deleteEvent(token, calendarId, task.gcal_event_id);
+      toast.success('אירוע הוסר מ-Google Calendar');
+    } catch { /* already gone */ }
   }
 
   async function removeProjectEvent(project: Project) {
