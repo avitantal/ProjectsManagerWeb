@@ -240,16 +240,23 @@ export function useCalendarSync(
     await supabase.from(`${taskScope}_tasks`).update({ gcal_event_id: null }).eq('id', task.id);
   }
 
-  async function removeProjectEvent(project: Project, projectScope: Scope, childTasks: Task[]) {
+  async function removeProjectEvent(project: Project, projectScope: Scope, _childTasks?: Task[]) {
     const calendarId = project.gcal_calendar_id ?? prefs?.gcal_default_calendar_id ?? 'primary';
     if (token && project.gcal_event_id) {
       try { await deleteEvent(token, calendarId, project.gcal_event_id); } catch { /* already gone */ }
       await supabase.from(`${projectScope}_projects`).update({ gcal_event_id: null }).eq('id', project.id);
     }
-    const tasksWithEvent = childTasks.filter(t => t.gcal_event_id);
+    // Fetch fresh from DB so we don't miss tasks whose gcal_event_id was set after the last React refresh
+    const { data: freshTasks } = await supabase
+      .from(`${projectScope}_tasks`)
+      .select('id, gcal_event_id, project_id, due_date')
+      .eq('project_id', project.id)
+      .not('gcal_event_id', 'is', null);
+    const tasksWithEvent = (freshTasks ?? []) as Pick<Task, 'id' | 'gcal_event_id' | 'project_id' | 'due_date'>[];
     await Promise.all(tasksWithEvent.map(async t => {
       if (token) {
-        try { await deleteEvent(token, resolveCalendarId(t, [project]), t.gcal_event_id!); } catch { /* already gone */ }
+        const taskCalendarId = resolveCalendarId(t as Task, [project]);
+        try { await deleteEvent(token, taskCalendarId, t.gcal_event_id!); } catch { /* already gone */ }
       }
       await supabase.from(`${projectScope}_tasks`).update({ gcal_event_id: null }).eq('id', t.id);
     }));
