@@ -73,6 +73,7 @@ export function TaskRow({ task, project, projects, scope, onChange, isSelected, 
 
   useEffect(() => {
     if (isSelected) return;
+    // Defer to next tick so the textarea's onBlur can fire saveNotes before unmount.
     const timeout = window.setTimeout(() => setEditingNotes(false), 0);
     return () => window.clearTimeout(timeout);
   }, [isSelected]);
@@ -100,6 +101,9 @@ export function TaskRow({ task, project, projects, scope, onChange, isSelected, 
       if (checked && task.status !== 'done') update.closed_at = new Date().toISOString();
       else if (!checked && task.status === 'done') update.closed_at = null;
       await supabase.from(`${scope}_tasks`).update(update).eq('id', task.id);
+      if (onTaskSaved && task.gcal_event_id && task.due_date) {
+        await onTaskSaved({ ...task, status: newStatus });
+      }
       onChange();
     } finally {
       setSavingChanges(false);
@@ -113,6 +117,9 @@ export function TaskRow({ task, project, projects, scope, onChange, isSelected, 
       if (draftStatus === 'done' && task.status !== 'done') update.closed_at = new Date().toISOString();
       else if (draftStatus !== 'done' && task.status === 'done') update.closed_at = null;
       await supabase.from(`${scope}_tasks`).update(update).eq('id', task.id);
+      if (onTaskSaved && task.gcal_event_id && task.due_date) {
+        await onTaskSaved({ ...task, status: draftStatus, priority: draftPriority });
+      }
       onChange();
     } finally {
       setSavingChanges(false);
@@ -142,7 +149,11 @@ export function TaskRow({ task, project, projects, scope, onChange, isSelected, 
   async function saveNotes() {
     if (notesDraft === (task.notes ?? '')) return;
     setSavingNotes(true);
-    await supabase.from(`${scope}_tasks`).update({ notes: notesDraft || null }).eq('id', task.id);
+    const newNotes = notesDraft || null;
+    await supabase.from(`${scope}_tasks`).update({ notes: newNotes }).eq('id', task.id);
+    if (onTaskSaved && task.gcal_event_id && task.due_date) {
+      await onTaskSaved({ ...task, notes: newNotes });
+    }
     setSavingNotes(false);
     onChange();
   }

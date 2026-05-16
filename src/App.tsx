@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect, useRef } from 'react';
+import { useState, useMemo, useEffect, useRef, lazy, Suspense } from 'react';
 import type { Session } from '@supabase/supabase-js';
 import { CalendarCog, CalendarX2, Plus, RefreshCw, Factory, House, LogOut, Loader2, FolderKanban, ListTodo, CheckCircle2, Archive, X } from 'lucide-react';
 import { useProjects, useTasks, useFileCounts } from './hooks/useData';
@@ -10,7 +10,8 @@ import { ProjectCard } from './components/ProjectCard';
 import { SortableTaskList } from './components/SortableTaskList';
 import { AddDialog } from './components/AddDialog';
 import { Auth } from './components/Auth';
-import { CalendarFirstUseDialog, CalendarSettingsDialog } from './components/CalendarSettingsDialog';
+const CalendarSettingsDialog = lazy(() => import('./components/CalendarSettingsDialog').then(m => ({ default: m.CalendarSettingsDialog })));
+const CalendarFirstUseDialog = lazy(() => import('./components/CalendarSettingsDialog').then(m => ({ default: m.CalendarFirstUseDialog })));
 import { cn } from './lib/utils';
 import { buildProjectProgress, getProjectProgress, isProjectActive, isProjectComplete, isProjectDone } from './lib/projectProgress';
 import { signInWithGoogleCalendar } from './lib/googleAuth';
@@ -246,7 +247,7 @@ function ScopeView({ scope, setScope, session, providerToken, onCalendarAuthErro
               title={session.user.email ?? ''}
             >
               🎯 ניהול פרויקטים
-              <span className="text-[10px] font-normal text-muted/70" dir="ltr">V1.58</span>
+              <span className="text-[10px] font-normal text-muted/70" dir="ltr">V1.60</span>
             </button>
             {menuOpen && (
               <div className="absolute top-full right-0 mt-1 min-w-[160px] card p-1 z-50 shadow-lg" role="menu">
@@ -511,28 +512,32 @@ function ScopeView({ scope, setScope, session, providerToken, onCalendarAuthErro
       )}
 
       {needsCalendarSetup && calendarToken && (
-        <CalendarFirstUseDialog
-          token={calendarToken}
-          onSave={async patch => {
-            await updatePrefs(patch);
-            if (patch.gcal_default_calendar_id) {
-              await flushPending();
-            }
-            return;
-          }}
-          onClose={() => setNeedsCalendarSetup(false)}
-          onAuthError={onCalendarAuthError}
-        />
+        <Suspense fallback={null}>
+          <CalendarFirstUseDialog
+            token={calendarToken}
+            onSave={async patch => {
+              await updatePrefs(patch);
+              if (patch.gcal_default_calendar_id) {
+                await flushPending();
+              }
+              return;
+            }}
+            onClose={() => setNeedsCalendarSetup(false)}
+            onAuthError={onCalendarAuthError}
+          />
+        </Suspense>
       )}
 
       {showCalendarSettings && calendarToken && (
-        <CalendarSettingsDialog
-          token={calendarToken}
-          prefs={prefs}
-          onSave={async patch => { await updatePrefs(patch); }}
-          onClose={() => setShowCalendarSettings(false)}
-          onAuthError={onCalendarAuthError}
-        />
+        <Suspense fallback={null}>
+          <CalendarSettingsDialog
+            token={calendarToken}
+            prefs={prefs ?? null}
+            onSave={async patch => { await updatePrefs(patch); }}
+            onClose={() => setShowCalendarSettings(false)}
+            onAuthError={onCalendarAuthError}
+          />
+        </Suspense>
       )}
     </>
   );

@@ -1,11 +1,12 @@
-import { useState, type FormEvent } from 'react';
+import { useState, lazy, Suspense, type FormEvent } from 'react';
 import { CalendarCheck, X } from 'lucide-react';
 import {
   type Scope, type Project, type Task, supabase,
   PROJECT_STATUS_HE, PRIORITY_HE, TASK_STATUS_HE, TASK_PRIORITY_HE,
 } from '../lib/supabase';
 import { CalendarPickerDialog } from './CalendarPickerDialog';
-import { DatePickerInput } from './DatePickerInput';
+
+const DatePickerInput = lazy(() => import('./DatePickerInput').then(m => ({ default: m.DatePickerInput })));
 
 interface Props {
   scope: Scope;
@@ -117,10 +118,10 @@ export function AddDialog({ scope, type, projects, defaultProjectId, editing, on
 
     setSaving(false);
 
-    if (savedTask && onTaskSaved && calendarToken) {
+    if (savedTask && onTaskSaved) {
       await onTaskSaved(savedTask).catch(() => {});
     }
-    if (savedProject && onProjectSaved && syncToCalendar) {
+    if (savedProject && onProjectSaved) {
       await onProjectSaved(savedProject).catch(() => {});
     }
 
@@ -182,7 +183,9 @@ export function AddDialog({ scope, type, projects, defaultProjectId, editing, on
             <div>
               <label className="block text-xs text-muted mb-1">תאריך יעד</label>
               <div className="flex gap-2">
-                <DatePickerInput value={dueDate} onChange={setDueDate} className="flex-1" />
+                <Suspense fallback={<input type="date" value={dueDate} onChange={e => setDueDate(e.target.value)} className="input flex-1" />}>
+                  <DatePickerInput value={dueDate} onChange={setDueDate} className="flex-1" />
+                </Suspense>
                 {type === 'task' && dueDate && (
                   <input
                     type="time"

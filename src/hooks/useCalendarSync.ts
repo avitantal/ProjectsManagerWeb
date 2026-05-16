@@ -38,21 +38,18 @@ export function useCalendarSync(
   providerToken: string | null,
   onCalendarAuthError?: () => void,
 ) {
-  const [prefs, setPrefs] = useState<UserPreferences | null>(null);
-  const [prefsLoaded, setPrefsLoaded] = useState(false);
+  const [prefs, setPrefs] = useState<UserPreferences | null | undefined>(undefined);
   const [needsCalendarSetup, setNeedsCalendarSetup] = useState(false);
   const [, setPendingFreeTasks] = useState<Array<{ task: Task; scope: Scope }>>([]);
   const hasSyncedOnLogin = useRef(false);
 
   const token = providerToken;
   const userId = session?.user?.id ?? null;
+  const prefsLoaded = prefs !== undefined;
 
   useEffect(() => {
-    if (!userId) { setPrefsLoaded(false); return; }
-    loadPrefs(userId).then(p => {
-      setPrefs(p);
-      setPrefsLoaded(true);
-    });
+    if (!userId) return;
+    loadPrefs(userId).then(p => setPrefs(p));
   }, [userId]);
 
   const updatePrefs = useCallback(async (patch: Partial<UserPreferences>) => {
@@ -240,7 +237,7 @@ export function useCalendarSync(
     await supabase.from(`${taskScope}_tasks`).update({ gcal_event_id: null }).eq('id', task.id);
   }
 
-  async function removeProjectEvent(project: Project, projectScope: Scope, _childTasks?: Task[]) {
+  async function removeProjectEvent(project: Project, projectScope: Scope) {
     const calendarId = project.gcal_calendar_id ?? prefs?.gcal_default_calendar_id ?? 'primary';
     if (token && project.gcal_event_id) {
       try { await deleteEvent(token, calendarId, project.gcal_event_id); } catch { /* already gone */ }

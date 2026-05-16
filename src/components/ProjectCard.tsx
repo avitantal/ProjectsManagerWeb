@@ -79,6 +79,9 @@ export function ProjectCard({ project, scope, progress, fileCount, onChange, all
       if (draftStatus === 'done' && project.status !== 'done') update.closed_at = new Date().toISOString();
       else if (draftStatus !== 'done' && project.status === 'done') update.closed_at = null;
       await supabase.from(`${scope}_projects`).update(update).eq('id', project.id);
+      if (onProjectSaved && project.gcal_event_id && project.due_date) {
+        await onProjectSaved({ ...project, status: draftStatus });
+      }
       onChange();
     } finally {
       setSavingStatus(false);

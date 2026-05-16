@@ -60,7 +60,7 @@ describe('ProjectCard', () => {
 
   it('shows full progress fill for done project with no tasks', () => {
     const { container } = render(<ProjectCard {...defaultProps} project={{ ...baseProject, status: 'done' }} progress={{ completed: 0, total: 0 }} />);
-    const fill = container.querySelector('[style*="width: 100%"]');
+    const fill = container.querySelector('[style*="height: 100%"]');
     expect(fill).toBeInTheDocument();
   });
 

@@ -3,6 +3,13 @@ import { TASK_STATUS_HE, TASK_PRIORITY_HE, PROJECT_STATUS_HE, PRIORITY_HE } from
 
 const BASE = 'https://www.googleapis.com/calendar/v3';
 
+// Adds one calendar day to a YYYY-MM-DD string using UTC arithmetic so DST
+// transitions in the local zone can't shift the result.
+function addOneDayUtc(yyyyMmDd: string): string {
+  const [y, m, d] = yyyyMmDd.split('-').map(Number);
+  return new Date(Date.UTC(y, m - 1, d + 1)).toISOString().slice(0, 10);
+}
+
 const PRIORITY_EMOJI: Record<TaskPriority, string> = {
   urgent: '🔴',
   high: '🟠',
@@ -153,11 +160,8 @@ function buildEventPayload(task: Task, reminders: number[], projectName?: string
     endSpec   = { dateTime: endDateTime,    timeZone: TZ };
   } else {
     // all-day event
-    const nextDay = new Date(date);
-    nextDay.setDate(nextDay.getDate() + 1);
-    const endDate = nextDay.toISOString().slice(0, 10);
     startSpec = { date };
-    endSpec   = { date: endDate };
+    endSpec   = { date: addOneDayUtc(date) };
   }
 
   return {
@@ -222,9 +226,7 @@ const PROJECT_PRIORITY_EMOJI: Record<Priority, string> = {
 
 function buildProjectEventPayload(project: Project, reminders: number[]) {
   const date = project.due_date!;
-  const nextDay = new Date(date);
-  nextDay.setDate(nextDay.getDate() + 1);
-  const endDate = nextDay.toISOString().slice(0, 10);
+  const endDate = addOneDayUtc(date);
 
   const descLines = [
     `📁 ${project.name}`,

@@ -37,6 +37,7 @@ export function ProjectFiles({ scope, projectId }: Props) {
   const [url, setUrl] = useState('');
   const [name, setName] = useState('');
   const [error, setError] = useState<string | null>(null);
+  const [confirmingId, setConfirmingId] = useState<number | null>(null);
 
   const refresh = useCallback(async () => {
     setLoading(true);
@@ -89,8 +90,8 @@ export function ProjectFiles({ scope, projectId }: Props) {
   }
 
   async function removeFile(file: ProjectFile) {
-    if (!confirm(`להסיר את ${file.file_name} מהפרויקט? (הקובץ ב-Drive לא יימחק)`)) return;
     await supabase.from('project_files').delete().eq('id', file.id);
+    setConfirmingId(null);
     await refresh();
   }
 
@@ -168,14 +169,34 @@ export function ProjectFiles({ scope, projectId }: Props) {
                   <ExternalLink size={12} />
                 </a>
               )}
-              <button
-                type="button"
-                onClick={() => void removeFile(f)}
-                className="opacity-0 group-hover/file:opacity-100 text-muted hover:text-red-400 transition"
-                aria-label="מחק"
-              >
-                <Trash2 size={12} />
-              </button>
+              {confirmingId === f.id ? (
+                <div className="flex items-center gap-1 shrink-0">
+                  <button
+                    type="button"
+                    onClick={() => void removeFile(f)}
+                    className="rounded-md bg-red-500/20 px-1.5 py-0.5 text-[11px] text-red-200 hover:bg-red-500/30"
+                    title="הקובץ ב-Drive לא יימחק"
+                  >
+                    הסר
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setConfirmingId(null)}
+                    className="rounded-md px-1.5 py-0.5 text-[11px] text-muted hover:bg-surface hover:text-text"
+                  >
+                    בטל
+                  </button>
+                </div>
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => setConfirmingId(f.id)}
+                  className="opacity-0 group-hover/file:opacity-100 text-muted hover:text-red-400 transition"
+                  aria-label="מחק"
+                >
+                  <Trash2 size={12} />
+                </button>
+              )}
             </li>
           ))}
         </ul>

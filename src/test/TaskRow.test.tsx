@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen } from '@testing-library/react';
+import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { TaskRow } from '../components/TaskRow';
 import type { Task } from '../lib/supabase';
 
@@ -93,5 +93,27 @@ describe('TaskRow', () => {
     render(<TaskRow {...defaultProps} />);
     const selects = screen.getAllByRole('combobox');
     expect(selects.length).toBeGreaterThanOrEqual(2);
+  });
+
+  it('calls onTaskSaved after inline priority change when task has gcal_event_id', async () => {
+    const onTaskSaved = vi.fn().mockResolvedValue(undefined);
+    const syncedTask: Task = { ...baseTask, gcal_event_id: 'evt_123', due_date: '2026-06-01' };
+    render(<TaskRow {...defaultProps} task={syncedTask} onTaskSaved={onTaskSaved} />);
+    const selects = screen.getAllByRole('combobox');
+    fireEvent.change(selects[0], { target: { value: 'high' } });
+    fireEvent.click(screen.getByRole('button', { name: /שמור/ }));
+    await waitFor(() => expect(onTaskSaved).toHaveBeenCalledTimes(1));
+    expect(onTaskSaved.mock.calls[0][0]).toMatchObject({ id: 1, priority: 'high', gcal_event_id: 'evt_123' });
+  });
+
+  it('does not call onTaskSaved when task has no gcal_event_id', async () => {
+    const onChange = vi.fn();
+    const onTaskSaved = vi.fn().mockResolvedValue(undefined);
+    render(<TaskRow {...defaultProps} onChange={onChange} task={{ ...baseTask, due_date: '2026-06-01' }} onTaskSaved={onTaskSaved} />);
+    const selects = screen.getAllByRole('combobox');
+    fireEvent.change(selects[0], { target: { value: 'high' } });
+    fireEvent.click(screen.getByRole('button', { name: /שמור/ }));
+    await waitFor(() => expect(onChange).toHaveBeenCalled());
+    expect(onTaskSaved).not.toHaveBeenCalled();
   });
 });

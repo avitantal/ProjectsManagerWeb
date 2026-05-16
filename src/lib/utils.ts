@@ -12,8 +12,11 @@ export function formatDate(d: string | null): string {
 
 export function daysUntil(d: string | null): number | null {
   if (!d) return null;
-  const ms = new Date(d).getTime() - Date.now();
-  return Math.ceil(ms / (1000 * 60 * 60 * 24));
+  const [y, m, day] = d.slice(0, 10).split('-').map(Number);
+  const due = new Date(y, m - 1, day);
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  return Math.round((due.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
 }
 
 export function formatDateTime(d: string | null): string {

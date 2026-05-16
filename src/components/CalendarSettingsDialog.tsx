@@ -39,7 +39,7 @@ export function CalendarSettingsDialog({ token, prefs, onSave, onAuthError, onCl
   }
 
   function addCustom() {
-    const m = parseInt(customMinutes);
+    const m = parseInt(customMinutes, 10);
     if (!m || m <= 0) return;
     if (!reminders.includes(m)) setReminders(r => [...r, m].sort((a, b) => b - a));
     setCustomMinutes('');
