@@ -10,10 +10,31 @@ import {
   updateProjectEvent,
   isGoogleCalendarAuthError,
   isGoogleCalendarConfigurationError,
+  GoogleCalendarError,
 } from '../lib/googleCalendar';
 
 const DEFAULT_REMINDERS = [1440, 120];
 const ALL_SCOPES: Scope[] = ['factory', 'personal'];
+
+// Attempt to delete a calendar event, classifying the outcome so callers can
+// decide whether to clear the stored reference or keep it for a later retry.
+// A 404/410 means the event is already gone — a success for our purpose.
+async function tryDeleteEvent(
+  token: string,
+  calendarId: string,
+  eventId: string,
+): Promise<'removed' | 'gone' | 'failed'> {
+  try {
+    await deleteEvent(token, calendarId, eventId);
+    return 'removed';
+  } catch (err) {
+    if (err instanceof GoogleCalendarError && (err.status === 404 || err.status === 410)) {
+      return 'gone';
+    }
+    console.warn('GCal event delete failed — will retry later:', err);
+    return 'failed';
+  }
+}
 
 async function loadPrefs(userId: string): Promise<UserPreferences | null> {
   const { data } = await supabase
@@ -86,25 +107,36 @@ export function useCalendarSync(
     const calendarId = resolveCalendarId(task, projects);
     const reminders = prefs?.gcal_reminders ?? DEFAULT_REMINDERS;
     const projectName = resolveProjectName(task, projects);
+    // An existing event lives in the calendar it was created in (stored on the
+    // task); only a brand-new event uses the freshly resolved calendar.
+    const eventCalendarId = task.gcal_calendar_id ?? calendarId;
 
     if (!task.due_date) {
       if (task.gcal_event_id) {
-        try { await deleteEvent(token, calendarId, task.gcal_event_id); } catch { /* already gone */ }
-        await supabase.from(`${scope}_tasks`).update({ gcal_event_id: null }).eq('id', task.id);
-        if (!opts?.silent) toast.success('אירוע הוסר מ-Google Calendar');
+        const outcome = await tryDeleteEvent(token, eventCalendarId, task.gcal_event_id);
+        if (outcome !== 'failed') {
+          await supabase.from(`${scope}_tasks`).update({ gcal_event_id: null, gcal_calendar_id: null }).eq('id', task.id);
+          if (!opts?.silent) toast.success('אירוע הוסר מ-Google Calendar');
+        } else if (!opts?.silent) {
+          toast.error('הסרת האירוע מ-Google Calendar נכשלה — ננסה שוב אוטומטית');
+        }
       }
       return null;
     }
 
     try {
       if (task.gcal_event_id) {
-        await updateEvent(token, calendarId, task.gcal_event_id, task, reminders, projectName);
+        await updateEvent(token, eventCalendarId, task.gcal_event_id, task, reminders, projectName);
+        // Backfill the calendar id for events created before it was tracked.
+        if (!task.gcal_calendar_id) {
+          await supabase.from(`${scope}_tasks`).update({ gcal_calendar_id: eventCalendarId }).eq('id', task.id);
+        }
         if (!opts?.silent) toast.success('אירוע עודכן ב-Google Calendar');
         return task.gcal_event_id;
       }
 
       const eventId = await createEvent(token, calendarId, task, reminders, projectName);
-      await supabase.from(`${scope}_tasks`).update({ gcal_event_id: eventId }).eq('id', task.id);
+      await supabase.from(`${scope}_tasks`).update({ gcal_event_id: eventId, gcal_calendar_id: calendarId }).eq('id', task.id);
       if (!opts?.silent) toast.success('משימה נוספה ל-Google Calendar');
       return eventId;
     } catch (err) {
@@ -208,9 +240,29 @@ export function useCalendarSync(
 
         for (const project of (frozenProjects ?? []) as Project[]) {
           const calendarId = project.gcal_calendar_id ?? prefs?.gcal_default_calendar_id ?? 'primary';
-          try { await deleteEvent(token!, calendarId, project.gcal_event_id!); } catch { /* already gone */ }
-          await supabase.from(`${scope}_projects`).update({ gcal_event_id: null }).eq('id', project.id);
-          removed++;
+          const outcome = await tryDeleteEvent(token!, calendarId, project.gcal_event_id!);
+          if (outcome !== 'failed') {
+            await supabase.from(`${scope}_projects`).update({ gcal_event_id: null }).eq('id', project.id);
+            removed++;
+          }
+        }
+
+        // Safety net: remove calendar events for frozen tasks that still have
+        // gcal_event_id — e.g. a task deleted while the calendar token was
+        // briefly unavailable, so removeTaskEvent could not reach Google.
+        const { data: frozenTasks } = await supabase
+          .from(`${scope}_tasks`)
+          .select('id, gcal_event_id, gcal_calendar_id, project_id, due_date')
+          .eq('status', 'frozen')
+          .not('gcal_event_id', 'is', null);
+
+        for (const t of (frozenTasks ?? []) as Task[]) {
+          const calendarId = t.gcal_calendar_id ?? resolveCalendarId(t, (allProjects ?? []) as Project[]);
+          const outcome = await tryDeleteEvent(token!, calendarId, t.gcal_event_id!);
+          if (outcome !== 'failed') {
+            await supabase.from(`${scope}_tasks`).update({ gcal_event_id: null, gcal_calendar_id: null }).eq('id', t.id);
+            removed++;
+          }
         }
       }
 
@@ -218,7 +270,7 @@ export function useCalendarSync(
         toast.success(`סונכרנו ${synced} אירועים ל-Google Calendar`);
       }
       if (removed > 0) {
-        toast.success(`הוסרו ${removed} פרויקטים מ-Google Calendar`);
+        toast.success(`הוסרו ${removed} אירועים מ-Google Calendar`);
       }
     }
 
@@ -227,23 +279,36 @@ export function useCalendarSync(
   }, [token, userId, prefsLoaded]);
 
   async function removeTaskEvent(task: Task, taskScope: Scope, taskProjects: Project[]) {
-    if (!token) return;
-    // Read gcal_event_id fresh — a sync may have set it after the last React
-    // refresh (task created then deleted moments later), leaving the prop stale.
+    // Read gcal fields fresh from the DB — a sync may have set them after the
+    // last React refresh (task created then deleted moments later), leaving the
+    // prop stale.
     const { data: freshTask } = await supabase
       .from(`${taskScope}_tasks`)
-      .select('gcal_event_id')
+      .select('gcal_event_id, gcal_calendar_id')
       .eq('id', task.id)
       .maybeSingle();
     const eventId = freshTask?.gcal_event_id ?? task.gcal_event_id ?? null;
     if (!eventId) return;
-    const calendarId = resolveCalendarId(task, taskProjects);
-    if (!calendarId) return;
-    try {
-      await deleteEvent(token, calendarId, eventId);
-      toast.success('אירוע הוסר מ-Google Calendar');
-    } catch { /* already gone */ }
-    await supabase.from(`${taskScope}_tasks`).update({ gcal_event_id: null }).eq('id', task.id);
+    // Delete from the calendar the event actually lives in (stored at creation).
+    // Fall back to resolution only for events created before it was tracked.
+    const calendarId = freshTask?.gcal_calendar_id ?? task.gcal_calendar_id
+      ?? resolveCalendarId(task, taskProjects);
+
+    if (!token) {
+      // Can't reach Google now — keep gcal_event_id so the page-load sweep
+      // retries once a token is available.
+      console.warn('GCal task event not removed yet — no calendar token; will retry on next load');
+      return;
+    }
+
+    const outcome = await tryDeleteEvent(token, calendarId, eventId);
+    if (outcome === 'failed') {
+      // Keep gcal_event_id so the sweep retries; surface the failure.
+      toast.error('הסרת האירוע מ-Google Calendar נכשלה — ננסה שוב אוטומטית');
+      return;
+    }
+    await supabase.from(`${taskScope}_tasks`).update({ gcal_event_id: null, gcal_calendar_id: null }).eq('id', task.id);
+    toast.success('אירוע הוסר מ-Google Calendar');
   }
 
   async function removeProjectEvent(project: Project, projectScope: Scope) {
@@ -259,22 +324,27 @@ export function useCalendarSync(
     const calendarId = freshProject?.gcal_calendar_id ?? project.gcal_calendar_id
       ?? prefs?.gcal_default_calendar_id ?? 'primary';
     if (token && eventId) {
-      try { await deleteEvent(token, calendarId, eventId); } catch { /* already gone */ }
-      await supabase.from(`${projectScope}_projects`).update({ gcal_event_id: null }).eq('id', project.id);
+      const outcome = await tryDeleteEvent(token, calendarId, eventId);
+      if (outcome !== 'failed') {
+        await supabase.from(`${projectScope}_projects`).update({ gcal_event_id: null }).eq('id', project.id);
+      }
     }
-    // Fetch fresh from DB so we don't miss tasks whose gcal_event_id was set after the last React refresh
+    // Fetch the project's tasks fresh from the DB — including each task's own
+    // stored gcal_calendar_id so its event is deleted from the right calendar.
     const { data: freshTasks } = await supabase
       .from(`${projectScope}_tasks`)
-      .select('id, gcal_event_id, project_id, due_date')
+      .select('id, gcal_event_id, gcal_calendar_id, project_id, due_date')
       .eq('project_id', project.id)
       .not('gcal_event_id', 'is', null);
-    const tasksWithEvent = (freshTasks ?? []) as Pick<Task, 'id' | 'gcal_event_id' | 'project_id' | 'due_date'>[];
+    const tasksWithEvent = (freshTasks ?? []) as Pick<Task, 'id' | 'gcal_event_id' | 'gcal_calendar_id' | 'project_id' | 'due_date'>[];
     await Promise.all(tasksWithEvent.map(async t => {
-      if (token) {
-        const taskCalendarId = resolveCalendarId(t as Task, [project]);
-        try { await deleteEvent(token, taskCalendarId, t.gcal_event_id!); } catch { /* already gone */ }
+      // No token — keep gcal_event_id; the page-load sweep will retry.
+      if (!token) return;
+      const taskCalendarId = t.gcal_calendar_id ?? resolveCalendarId(t as Task, [project]);
+      const outcome = await tryDeleteEvent(token, taskCalendarId, t.gcal_event_id!);
+      if (outcome !== 'failed') {
+        await supabase.from(`${projectScope}_tasks`).update({ gcal_event_id: null, gcal_calendar_id: null }).eq('id', t.id);
       }
-      await supabase.from(`${projectScope}_tasks`).update({ gcal_event_id: null }).eq('id', t.id);
     }));
   }
 
