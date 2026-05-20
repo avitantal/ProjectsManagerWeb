@@ -3,17 +3,26 @@ import { supabase, type Project, type Task, type Scope } from '../lib/supabase';
 
 export function useFileCounts(scope: Scope) {
   const [counts, setCounts] = useState<Map<number, number>>(new Map());
+  // Per-project searchable text built from attached file names + summaries.
+  const [fileText, setFileText] = useState<Map<number, string>>(new Map());
 
   const refresh = useCallback(async () => {
     const { data } = await supabase
       .from('project_files')
-      .select('project_id')
+      .select('project_id, file_name, summary')
       .eq('project_type', scope);
-    const m = new Map<number, number>();
-    (data ?? []).forEach((r: { project_id: number }) => {
-      m.set(r.project_id, (m.get(r.project_id) ?? 0) + 1);
+    const countMap = new Map<number, number>();
+    const textMap = new Map<number, string>();
+    (data ?? []).forEach((r: { project_id: number; file_name: string | null; summary: string | null }) => {
+      countMap.set(r.project_id, (countMap.get(r.project_id) ?? 0) + 1);
+      const piece = [r.file_name, r.summary].filter(Boolean).join(' ');
+      if (piece) {
+        const prev = textMap.get(r.project_id);
+        textMap.set(r.project_id, prev ? `${prev}\n${piece}` : piece);
+      }
     });
-    setCounts(m);
+    setCounts(countMap);
+    setFileText(textMap);
   }, [scope]);
 
   useEffect(() => {
@@ -21,7 +30,7 @@ export function useFileCounts(scope: Scope) {
     return () => window.clearTimeout(timeout);
   }, [refresh]);
 
-  return { counts, refresh };
+  return { counts, fileText, refresh };
 }
 
 export function useProjects(scope: Scope) {

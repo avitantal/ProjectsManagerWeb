@@ -3,6 +3,7 @@ import { useSwipeable } from 'react-swipeable';
 import { Calendar, CalendarCheck, ChevronDown, ChevronUp, Paperclip, Pencil, RotateCcw, Trash2 } from 'lucide-react';
 import { ProjectFiles } from './ProjectFiles';
 import { AddDialog } from './AddDialog';
+import { Highlight } from './Highlight';
 import {
   type Project,
   type ProjectStatus,
@@ -37,9 +38,10 @@ interface Props {
   onCalendarAuthError?: () => void;
   onProjectSaved?: (project: Project) => Promise<void>;
   onBeforeDelete?: (project: Project) => Promise<void>;
+  searchQuery?: string;
 }
 
-export function ProjectCard({ project, scope, progress, fileCount, onChange, allowPermDelete, calendarToken, onCalendarAuthError, onProjectSaved, onBeforeDelete }: Props) {
+export function ProjectCard({ project, scope, progress, fileCount, onChange, allowPermDelete, calendarToken, onCalendarAuthError, onProjectSaved, onBeforeDelete, searchQuery = '' }: Props) {
   const days = daysUntil(project.due_date);
   const overdue = days !== null && days < 0;
   const [statusDraft, setStatusDraft] = useState<StatusDraft>(() => ({
@@ -131,7 +133,7 @@ export function ProjectCard({ project, scope, progress, fileCount, onChange, all
       />
       <div className="relative flex items-start justify-between gap-2 mb-1.5">
         <h3 className="font-medium text-text leading-tight text-sm flex items-center gap-1.5">
-          {project.name}
+          <span><Highlight text={project.name} query={searchQuery} /></span>
           {project.sync_to_calendar && <span title="מסונכרן לגוגל קלנדר"><CalendarCheck size={12} className="text-accent/60 shrink-0" /></span>}
         </h3>
         {confirmingDelete ? (
@@ -186,7 +188,9 @@ export function ProjectCard({ project, scope, progress, fileCount, onChange, all
         )}
       </div>
       {project.description && (
-        <p className="text-xs text-muted mb-1.5 leading-relaxed">{project.description}</p>
+        <p className="text-xs text-muted mb-1.5 leading-relaxed">
+          <Highlight text={project.description} query={searchQuery} />
+        </p>
       )}
       <div className="relative flex flex-wrap items-center gap-1.5 mb-1.5">
         <div className="flex flex-wrap items-center gap-1" onClick={(e) => e.stopPropagation()}>

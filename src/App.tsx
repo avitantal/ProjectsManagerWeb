@@ -4,12 +4,23 @@ import { CalendarCog, CalendarX2, Plus, RefreshCw, Factory, House, LogOut, Loade
 import { useProjects, useTasks, useFileCounts } from './hooks/useData';
 import { useAuth } from './hooks/useAuth';
 import { useCalendarSync } from './hooks/useCalendarSync';
-import { supabase, type Scope, type Task, type Project } from './lib/supabase';
+import {
+  supabase,
+  type Scope,
+  type Task,
+  type Project,
+  PROJECT_STATUS_HE,
+  PRIORITY_HE,
+  TASK_STATUS_HE,
+  TASK_PRIORITY_HE,
+} from './lib/supabase';
 import { Stats } from './components/Stats';
 import { ProjectCard } from './components/ProjectCard';
 import { SortableTaskList } from './components/SortableTaskList';
 import { AddDialog } from './components/AddDialog';
 import { Auth } from './components/Auth';
+import { SearchBar } from './components/SearchBar';
+import { searchFilter } from './lib/search';
 const CalendarSettingsDialog = lazy(() => import('./components/CalendarSettingsDialog').then(m => ({ default: m.CalendarSettingsDialog })));
 const CalendarFirstUseDialog = lazy(() => import('./components/CalendarSettingsDialog').then(m => ({ default: m.CalendarFirstUseDialog })));
 import { cn } from './lib/utils';
@@ -50,6 +61,37 @@ function sortedProjects(projects: Project[], sort: ProjectSort) {
   });
 }
 
+/**
+ * Builds a project -> searchable-text function. `fileText` carries the names
+ * and summaries of files attached to each project, so a search hits them too.
+ */
+function makeProjectSearchText(fileText: Map<number, string>) {
+  return (p: Project): string =>
+    [
+      p.name,
+      p.description,
+      PROJECT_STATUS_HE[p.status],
+      PRIORITY_HE[p.priority],
+      fileText.get(p.id),
+    ]
+      .filter(Boolean)
+      .join('\n');
+}
+
+/** Builds a task -> searchable-text function that also covers the parent project name. */
+function makeTaskSearchText(projectsById: Map<number, Project>) {
+  return (t: Task): string =>
+    [
+      t.name,
+      t.notes,
+      TASK_STATUS_HE[t.status],
+      TASK_PRIORITY_HE[t.priority],
+      t.project_id ? projectsById.get(t.project_id)?.name : null,
+    ]
+      .filter(Boolean)
+      .join('\n');
+}
+
 interface ScopeViewProps {
   scope: Scope;
   setScope: (s: Scope) => void;
@@ -61,7 +103,7 @@ interface ScopeViewProps {
 function ScopeView({ scope, setScope, session, providerToken, onCalendarAuthError }: ScopeViewProps) {
   const { projects, refresh: refreshProjects } = useProjects(scope);
   const { tasks, refresh: refreshTasks } = useTasks(scope);
-  const { counts: fileCounts, refresh: refreshFileCounts } = useFileCounts(scope);
+  const { counts: fileCounts, fileText: projectFileText, refresh: refreshFileCounts } = useFileCounts(scope);
   const { syncTask, syncProject, removeTaskEvent, removeProjectEvent, prefs, updatePrefs, needsCalendarSetup, setNeedsCalendarSetup, flushPending, isCalendarReady } = useCalendarSync(session, providerToken, onCalendarAuthError);
   const calendarToken = providerToken;
   const [showCalendarSettings, setShowCalendarSettings] = useState(false);
@@ -81,6 +123,7 @@ function ScopeView({ scope, setScope, session, providerToken, onCalendarAuthErro
   const [taskSort, setTaskSort]       = useState<TaskSort>('priority');
   const [projectSort, setProjectSort] = useState<ProjectSort>('priority');
   const [hideDone, setHideDone] = useState(false);
+  const [query, setQuery] = useState('');
   const [menuOpen, setMenuOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
   const syncedDoneProjectIds = useRef<Set<number>>(new Set());
@@ -228,6 +271,20 @@ function ScopeView({ scope, setScope, session, providerToken, onCalendarAuthErro
 
   const projectsById = useMemo(() => new Map(projects.map(p => [p.id, p])), [projects]);
 
+  // Instant client-side search across both columns — every keystroke re-filters.
+  const taskSearchText = useMemo(() => makeTaskSearchText(projectsById), [projectsById]);
+  const projectSearchText = useMemo(() => makeProjectSearchText(projectFileText), [projectFileText]);
+  const searchedProjects = useMemo(
+    () => searchFilter(sortedVisibleProjects, query, projectSearchText),
+    [sortedVisibleProjects, query, projectSearchText],
+  );
+  const searchedTasks = useMemo(
+    () => searchFilter(sortedVisibleTasks, query, taskSearchText),
+    [sortedVisibleTasks, query, taskSearchText],
+  );
+  const showProjectsCol = ['projects', 'projects-done', 'projects-frozen'].includes(view);
+  const searching = query.trim().length > 0;
+
   const lastClosedTaskId = useMemo(() => {
     const closed = tasks.filter(t => t.closed_at && t.project_id);
     if (!closed.length) return null;
@@ -247,7 +304,7 @@ function ScopeView({ scope, setScope, session, providerToken, onCalendarAuthErro
               title={session.user.email ?? ''}
             >
               🎯 ניהול פרויקטים
-              <span className="text-[10px] font-normal text-muted/70" dir="ltr">V1.60</span>
+              <span className="text-[10px] font-normal text-muted/70" dir="ltr">V1.61</span>
             </button>
             {menuOpen && (
               <div className="absolute top-full right-0 mt-1 min-w-[160px] card p-1 z-50 shadow-lg" role="menu">
@@ -360,10 +417,22 @@ function ScopeView({ scope, setScope, session, providerToken, onCalendarAuthErro
           )}
         </div>
 
+        <div className="max-w-md mx-auto mb-5">
+          <SearchBar
+            value={query}
+            onChange={setQuery}
+            placeholder="חיפוש בפרויקטים ובמשימות..."
+            summary={
+              showProjectsCol
+                ? `${searchedProjects.length} פרויקטים · ${searchedTasks.length} משימות`
+                : `${searchedTasks.length} משימות`
+            }
+          />
+        </div>
+
         {(() => {
           const isActive = view === 'projects' || view === 'orphans';
           const isOrphansFrozen = view === 'orphans-frozen';
-          const showProjectsCol = ['projects','projects-done','projects-frozen'].includes(view);
           const showTasksCol = true;
           const projectsHeading = view === 'projects-done' ? 'פרויקטים שהושלמו' : view === 'projects-frozen' ? 'פרויקטים מחוקים' : 'פרויקטים';
           const tasksHeading = view === 'projects-done' ? 'משימות בפרויקטים שהושלמו' : view === 'orphans-done' ? 'משימות שהושלמו' : view === 'projects-frozen' ? 'משימות מחוקות' : view === 'orphans-frozen' ? 'משימות מחוקות' : 'משימות';
@@ -390,14 +459,16 @@ function ScopeView({ scope, setScope, session, providerToken, onCalendarAuthErro
                     </div>
                   </div>
                   <div className="space-y-3">
-                    {sortedVisibleProjects.length === 0 && (
-                      <div className="card p-6 text-center text-muted text-sm">אין פרויקטים</div>
+                    {searchedProjects.length === 0 && (
+                      <div className="card p-6 text-center text-muted text-sm">
+                        {searching ? 'לא נמצאו פרויקטים תואמים' : 'אין פרויקטים'}
+                      </div>
                     )}
-                    {sortedVisibleProjects.map(p => (
+                    {searchedProjects.map(p => (
                       <div key={p.id}
                            onClick={() => view === 'projects' && setFilterProjectId(filterProjectId === p.id ? null : p.id)}
                            className={cn(view === 'projects' && 'cursor-pointer', filterProjectId === p.id && 'ring-1 ring-accent rounded-xl')}>
-                        <ProjectCard project={p} scope={scope} progress={getProjectProgress(projectProgress, p.id)} fileCount={fileCounts.get(p.id) ?? 0} onChange={refreshAll} allowPermDelete={view === 'projects-frozen'} calendarToken={calendarToken} onCalendarAuthError={onCalendarAuthError} onProjectSaved={async project => { await syncProject(project, scope); }} onBeforeDelete={project => removeProjectEvent(project, scope)} />
+                        <ProjectCard project={p} scope={scope} progress={getProjectProgress(projectProgress, p.id)} fileCount={fileCounts.get(p.id) ?? 0} onChange={refreshAll} allowPermDelete={view === 'projects-frozen'} calendarToken={calendarToken} onCalendarAuthError={onCalendarAuthError} onProjectSaved={async project => { await syncProject(project, scope); }} onBeforeDelete={project => removeProjectEvent(project, scope)} searchQuery={query} />
                       </div>
                     ))}
                   </div>
@@ -438,7 +509,7 @@ function ScopeView({ scope, setScope, session, providerToken, onCalendarAuthErro
                     </div>
                   </div>
                   <SortableTaskList
-                    tasks={sortedVisibleTasks}
+                    tasks={searchedTasks}
                     projects={projects}
                     scope={scope}
                     onChange={refreshAll}
@@ -452,6 +523,8 @@ function ScopeView({ scope, setScope, session, providerToken, onCalendarAuthErro
                     onTaskSaved={async task => { await syncTask(task, scope, projects); }}
                     calendarToken={calendarToken}
                     onCalendarAuthError={onCalendarAuthError}
+                    searchQuery={query}
+                    emptyMessage={searching ? 'לא נמצאו משימות תואמות' : 'אין משימות'}
                   />
                 </section>
               )}
@@ -472,7 +545,7 @@ function ScopeView({ scope, setScope, session, providerToken, onCalendarAuthErro
             </div>
             <div className="overflow-y-auto flex-1 p-3">
               <SortableTaskList
-                tasks={sortedVisibleTasks}
+                tasks={searchedTasks}
                 projects={projects}
                 scope={scope}
                 onChange={refreshAll}
@@ -485,6 +558,8 @@ function ScopeView({ scope, setScope, session, providerToken, onCalendarAuthErro
                 onTaskSaved={async task => { await syncTask(task, scope, projects); }}
                 calendarToken={calendarToken}
                 onCalendarAuthError={onCalendarAuthError}
+                searchQuery={query}
+                emptyMessage={searching ? 'לא נמצאו משימות תואמות' : 'אין משימות'}
               />
             </div>
             <div className="p-3 border-t border-border shrink-0">

@@ -18,6 +18,7 @@ interface SortableItemProps {
   calendarToken?: string | null;
   onCalendarAuthError?: () => void;
   allowPermDelete?: boolean;
+  searchQuery?: string;
 }
 
 function SortableItem({ task, ...props }: SortableItemProps) {
@@ -57,9 +58,11 @@ interface Props {
   calendarToken?: string | null;
   onCalendarAuthError?: () => void;
   allowPermDelete?: boolean;
+  searchQuery?: string;
+  emptyMessage?: string;
 }
 
-export function SortableTaskList({ tasks, projects, scope, onChange, onReorder, selectedTaskId, onSelect, lastClosedTaskId, projectsById, onBeforeDelete, onTaskSaved, calendarToken, onCalendarAuthError, allowPermDelete }: Props) {
+export function SortableTaskList({ tasks, projects, scope, onChange, onReorder, selectedTaskId, onSelect, lastClosedTaskId, projectsById, onBeforeDelete, onTaskSaved, calendarToken, onCalendarAuthError, allowPermDelete, searchQuery, emptyMessage = 'אין משימות' }: Props) {
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 8 } }),
   );
@@ -77,7 +80,7 @@ export function SortableTaskList({ tasks, projects, scope, onChange, onReorder, 
       <SortableContext items={tasks.map(t => t.id)} strategy={verticalListSortingStrategy}>
         <div className="space-y-2">
           {tasks.length === 0 && (
-            <div className="card p-6 text-center text-muted text-sm">אין משימות</div>
+            <div className="card p-6 text-center text-muted text-sm">{emptyMessage}</div>
           )}
           {tasks.map(t => (
             <SortableItem
@@ -95,6 +98,7 @@ export function SortableTaskList({ tasks, projects, scope, onChange, onReorder, 
               calendarToken={calendarToken}
               onCalendarAuthError={onCalendarAuthError}
               allowPermDelete={allowPermDelete}
+              searchQuery={searchQuery}
             />
           ))}
         </div>

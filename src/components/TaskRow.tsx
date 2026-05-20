@@ -16,6 +16,7 @@ import {
 import { formatDate, formatDateTime, formatLifetime, daysUntil } from '../lib/utils';
 import { InlineChangeActions } from './InlineChangeActions';
 import { AddDialog } from './AddDialog';
+import { Highlight } from './Highlight';
 
 interface TaskDraft {
   taskId: number;
@@ -41,9 +42,10 @@ interface Props {
   calendarToken?: string | null;
   onCalendarAuthError?: () => void;
   allowPermDelete?: boolean;
+  searchQuery?: string;
 }
 
-export function TaskRow({ task, project, projects, scope, onChange, isSelected, onSelect, isLastClosed, dragHandleListeners, dragHandleAttributes, onBeforeDelete, onTaskSaved, calendarToken, onCalendarAuthError, allowPermDelete }: Props) {
+export function TaskRow({ task, project, projects, scope, onChange, isSelected, onSelect, isLastClosed, dragHandleListeners, dragHandleAttributes, onBeforeDelete, onTaskSaved, calendarToken, onCalendarAuthError, allowPermDelete, searchQuery = '' }: Props) {
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState<TaskDraft>(() => ({
     taskId: task.id,
@@ -215,11 +217,13 @@ export function TaskRow({ task, project, projects, scope, onChange, isSelected, 
         />
         <div className="flex-1 min-w-0">
           {project && (
-            <div className="text-[10px] font-semibold text-accent/80 uppercase tracking-wide">{project.name}</div>
+            <div className="text-[10px] font-semibold text-accent/80 uppercase tracking-wide">
+              <Highlight text={project.name} query={searchQuery} />
+            </div>
           )}
           <div className={`text-sm leading-tight flex flex-wrap items-center gap-1.5 ${draftStatus === 'done' ? 'line-through text-muted' : ''}`}>
             {suggested && <Sparkles size={12} className="text-purple-400 shrink-0" />}
-            <span>{task.name}</span>
+            <span><Highlight text={task.name} query={searchQuery} /></span>
             {suggested && <span className="chip bg-purple-500/20 text-purple-300 text-[10px] shrink-0">מוצע ע״י AI</span>}
             {task.notes && !isSelected && <NotebookPen size={11} className="text-muted/50 shrink-0" />}
           </div>
@@ -347,7 +351,9 @@ export function TaskRow({ task, project, projects, scope, onChange, isSelected, 
             </>
           ) : (
             <div className="flex items-start justify-between gap-2">
-              <p className="text-sm text-text/80 whitespace-pre-wrap leading-relaxed flex-1" dir="rtl">{task.notes}</p>
+              <p className="text-sm text-text/80 whitespace-pre-wrap leading-relaxed flex-1" dir="rtl">
+                <Highlight text={task.notes} query={searchQuery} />
+              </p>
               <button
                 onClick={() => setEditingNotes(true)}
                 className="text-muted hover:text-accent shrink-0 mt-0.5"
