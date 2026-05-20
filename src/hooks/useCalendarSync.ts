@@ -227,20 +227,39 @@ export function useCalendarSync(
   }, [token, userId, prefsLoaded]);
 
   async function removeTaskEvent(task: Task, taskScope: Scope, taskProjects: Project[]) {
-    if (!token || !task.gcal_event_id) return;
+    if (!token) return;
+    // Read gcal_event_id fresh — a sync may have set it after the last React
+    // refresh (task created then deleted moments later), leaving the prop stale.
+    const { data: freshTask } = await supabase
+      .from(`${taskScope}_tasks`)
+      .select('gcal_event_id')
+      .eq('id', task.id)
+      .maybeSingle();
+    const eventId = freshTask?.gcal_event_id ?? task.gcal_event_id ?? null;
+    if (!eventId) return;
     const calendarId = resolveCalendarId(task, taskProjects);
     if (!calendarId) return;
     try {
-      await deleteEvent(token, calendarId, task.gcal_event_id);
+      await deleteEvent(token, calendarId, eventId);
       toast.success('אירוע הוסר מ-Google Calendar');
     } catch { /* already gone */ }
     await supabase.from(`${taskScope}_tasks`).update({ gcal_event_id: null }).eq('id', task.id);
   }
 
   async function removeProjectEvent(project: Project, projectScope: Scope) {
-    const calendarId = project.gcal_calendar_id ?? prefs?.gcal_default_calendar_id ?? 'primary';
-    if (token && project.gcal_event_id) {
-      try { await deleteEvent(token, calendarId, project.gcal_event_id); } catch { /* already gone */ }
+    // Read the project's own gcal fields fresh from the DB — a sync may have
+    // set gcal_event_id after the last React refresh (e.g. a project created
+    // and then deleted moments later), which would leave the prop stale.
+    const { data: freshProject } = await supabase
+      .from(`${projectScope}_projects`)
+      .select('gcal_event_id, gcal_calendar_id')
+      .eq('id', project.id)
+      .maybeSingle();
+    const eventId    = freshProject?.gcal_event_id ?? project.gcal_event_id ?? null;
+    const calendarId = freshProject?.gcal_calendar_id ?? project.gcal_calendar_id
+      ?? prefs?.gcal_default_calendar_id ?? 'primary';
+    if (token && eventId) {
+      try { await deleteEvent(token, calendarId, eventId); } catch { /* already gone */ }
       await supabase.from(`${projectScope}_projects`).update({ gcal_event_id: null }).eq('id', project.id);
     }
     // Fetch fresh from DB so we don't miss tasks whose gcal_event_id was set after the last React refresh
