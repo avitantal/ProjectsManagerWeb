@@ -323,9 +323,16 @@ export function useCalendarSync(
     const eventId    = freshProject?.gcal_event_id ?? project.gcal_event_id ?? null;
     const calendarId = freshProject?.gcal_calendar_id ?? project.gcal_calendar_id
       ?? prefs?.gcal_default_calendar_id ?? 'primary';
+
+    let removed = 0; // events actually deleted from Google
+    let failed  = 0; // deletions that failed — kept for the automatic retry
+
     if (token && eventId) {
       const outcome = await tryDeleteEvent(token, calendarId, eventId);
-      if (outcome !== 'failed') {
+      if (outcome === 'failed') {
+        failed++;
+      } else {
+        if (outcome === 'removed') removed++;
         await supabase.from(`${projectScope}_projects`).update({ gcal_event_id: null }).eq('id', project.id);
       }
     }
@@ -342,10 +349,24 @@ export function useCalendarSync(
       if (!token) return;
       const taskCalendarId = t.gcal_calendar_id ?? resolveCalendarId(t as Task, [project]);
       const outcome = await tryDeleteEvent(token, taskCalendarId, t.gcal_event_id!);
-      if (outcome !== 'failed') {
+      if (outcome === 'failed') {
+        failed++;
+      } else {
+        if (outcome === 'removed') removed++;
         await supabase.from(`${projectScope}_tasks`).update({ gcal_event_id: null, gcal_calendar_id: null }).eq('id', t.id);
       }
     }));
+
+    // One consolidated popup covering the project event and all its task events.
+    if (failed > 0) {
+      toast.error(failed === 1
+        ? 'הסרת האירוע מ-Google Calendar נכשלה — ננסה שוב אוטומטית'
+        : `הסרת ${failed} אירועים מ-Google Calendar נכשלה — ננסה שוב אוטומטית`);
+    } else if (removed > 0) {
+      toast.success(removed === 1
+        ? 'אירוע הוסר מ-Google Calendar'
+        : `הוסרו ${removed} אירועים מ-Google Calendar`);
+    }
   }
 
   async function flushPending() {
